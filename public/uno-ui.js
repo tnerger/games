@@ -98,7 +98,7 @@ $('uno-toggle-log').onclick=()=>{const log=$('uno-log');const open=log.classList
 function showScores(){if(!roomInfo)return;const target=$('uno-scoreboard');target.replaceChildren(make('h3','Punktetafel'));const table=make('table');const header=make('tr');for(const x of ['Spieler','Siege','Punkte'])header.append(make('th',x));table.append(header);for(const p of roomInfo.players){const row=make('tr');const score=roomInfo.scores?.[p.id]||{wins:0,points:0};for(const v of [p.name,score.wins,score.points])row.append(make('td',String(v)));table.append(row);}target.append(table);}
 
 socket.on('game:state',state=>{
- if(state.game==='skyjo')return;
+ if(state.game==='skyjo'||state.game==='wizard')return;
  const oldIds=new Set((current?.hand||[]).map(c=>c.id));
  const freshIds=new Set(current?state.hand.filter(c=>!oldIds.has(c.id)).map(c=>c.id):[]);
  const events=state.events||[];
