@@ -11,3 +11,17 @@
 #uno-log p{margin:0;padding:9px 0;border-bottom:1px solid #414767;font-size:.9rem}
 #uno-scoreboard{margin-top:24px}#uno-scoreboard table{width:100%;border-collapse:collapse;text-align:left}#uno-scoreboard th,#uno-scoreboard td{padding:10px 7px;border-bottom:1px solid #50597b}
 @media(prefers-reduced-motion:reduce){.turn-flash{animation:none}}
+
+#bot-level{display:block;width:100%;min-height:56px;background:#171c36;color:white;border:2px solid #6e789f;border-radius:12px;padding:10px;font:inherit}
+.bot-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #525c82}
+.bot-entry button{width:auto;min-height:44px;margin:0;padding:8px 14px}
+#uno-draw-animation{position:relative;min-height:0;pointer-events:none}
+#uno-draw-animation.drawing{height:75px;display:flex;align-items:center;justify-content:center;gap:8px}
+.flying-card{display:none;font-size:2.8rem}
+.drawing .flying-card{display:inline-block;animation:cardfly 1.15s ease-in-out both}
+.drawing .flying-card:nth-child(2){animation-delay:.12s}
+.drawing .flying-card:nth-child(3){animation-delay:.24s}
+.drawing .flying-card:nth-child(4){animation-delay:.36s}
+.drawing .flying-card:nth-child(5){animation-delay:.48s}
+@keyframes cardfly{0%{opacity:0;transform:translate(65px,-50px) rotate(30deg) scale(.7)}45%{opacity:1}100%{opacity:0;transform:translate(-35px,18px) rotate(-12deg) scale(1)}}
+@media(prefers-reduced-motion:reduce){.drawing .flying-card{animation:none;opacity:1}}
