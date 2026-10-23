@@ -53,8 +53,22 @@ $('save-rules').onclick=()=>{
 $('start-uno').onclick=()=>send('game:start',{});
 $('bot-add').onclick=()=>send('bot:add',{difficulty:$('bot-level').value,name:$('bot-name').value.trim()});
 $('room-details-toggle').onclick=()=>{roomDetailsExpanded=!roomDetailsExpanded;$('room-details').classList.toggle('hidden',!roomDetailsExpanded);$('room-details-toggle').textContent=roomDetailsExpanded?'▾ Raum & Mitspieler ausblenden':'▸ Raum & Mitspieler anzeigen';};
+function wildArt(value){
+ const ns='http://www.w3.org/2000/svg';
+ const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 72 104');svg.setAttribute('aria-hidden','true');svg.classList.add('wild-art');
+ const shape=(tag,attrs)=>{const e=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));svg.append(e);return e;};
+ shape('ellipse',{cx:36,cy:52,rx:28,ry:43,fill:'#fff',transform:'rotate(22 36 52)'});
+ const parts=[['#e83b48',11,12],['#f7c831',37,12],['#218d58',11,53],['#3275d7',37,53]];
+ for(const [fill,x,y] of parts)shape('rect',{x,y,width:24,height:37,rx:5,fill,transform:'rotate(22 36 52)'});
+ if(value==='wild4'){
+  shape('rect',{x:11,y:38,width:50,height:31,rx:9,fill:'#17171f',stroke:'#fff','stroke-width':2});
+  const t=shape('text',{x:36,y:60,'text-anchor':'middle','font-size':24,'font-weight':900,fill:'#fff'});t.textContent='+4';
+ }
+ return svg;
+}
 function card(c,playable){
- const b=make('button',symbols[c.value]||c.value,'uno-card '+c.color);
+ const b=make('button',c.color==='wild'?'':symbols[c.value]||c.value,'uno-card '+c.color);
+ if(c.color==='wild')b.append(wildArt(c.value));
  b.disabled=!playable;
  b.setAttribute('aria-label',names[c.color]+' '+(symbols[c.value]||c.value));
  const hints=[];
@@ -97,11 +111,11 @@ socket.on('game:state',state=>{
  $('uno-notice').textContent=describe(newest);
  if(newest&&newest.id!==lastEventId){const area=$('uno-last-move');const next=make('div',describe(newest),'move-in');if(area.firstChild){area.firstChild.className='move-out';area.append(next);setTimeout(()=>{if(area.contains(next))area.replaceChildren(next);next.className='';},550);}else area.replaceChildren(next);lastEventId=newest.id;}
  const colorText={red:'ROT',yellow:'GELB',green:'GRÜN',blue:'BLAU'};
- const banner=$('uno-color-banner');banner.textContent='AKTUELLE FARBE: '+colorText[state.color];banner.className='chosen-color '+state.color;
+ const banner=$('uno-color-banner');banner.className='hidden';
  $('uno-restart').classList.toggle('hidden',!state.finished||roomInfo?.host!==identity.id);
  showScores();
  const top=$('uno-top');top.replaceChildren(card(state.top,false));
- $('uno-effect').textContent='Aktuelle Farbe: '+names[state.color]+' · Karten der anderen: '+state.players.filter(p=>p.id!==identity.id).map(p=>p.count).join(', ');
+ const effect=$('uno-effect');effect.replaceChildren(document.createTextNode('Aktuelle Farbe: '));const colored=make('strong',names[state.color],'active-color-text '+state.color);effect.append(colored,document.createTextNode(' · Karten der anderen: '+state.players.filter(p=>p.id!==identity.id).map(p=>p.count).join(', ')));
  const hand=$('uno-hand');hand.replaceChildren(...state.hand.map(c=>{const element=card(c,mine&&!state.finished&&state.canPlay.includes(c.id));if(freshIds.has(c.id))element.classList.add('newly-drawn');return element;}));
  const actions=$('uno-actions');actions.replaceChildren();
  if(mine&&!state.finished){
