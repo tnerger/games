@@ -88,3 +88,8 @@
 #skyjo-piles .skyjo-taken .skyjo-card{box-shadow:0 6px 24px #000c;border-color:#fff}
 #skyjo-piles .skyjo-discard-icon{top:26px;right:-35px;width:64px;height:64px;min-height:64px;padding:0;margin:0;border:3px solid #fff;border-radius:50%;font-size:2.1rem;box-shadow:0 5px 16px #000b;z-index:7;touch-action:manipulation}
 @media(max-width:380px){#skyjo-piles{gap:12px}#skyjo-piles .skyjo-stack{flex-basis:96px}#skyjo-piles .skyjo-discard-icon{right:-30px;width:58px;height:58px;min-height:58px}}
+
+/* Skyjo history: compact scrollable panel, matching UNO */
+#skyjo-log{max-height:250px;overflow-y:auto;overscroll-behavior:contain;background:#171c36;border:1px solid #5c6791;border-radius:12px;padding:12px 16px;font-size:.8rem;color:#b7c1e6}
+#skyjo-log p{margin:0;padding:9px 0;border-bottom:1px solid #414767;font-size:.9rem;line-height:1.4}
+#skyjo-log p:last-child{border-bottom:0}
