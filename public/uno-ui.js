@@ -16,12 +16,16 @@ let current=null;
 let roomInfo=null;
 let lastRevision=-1;
 let previousCounts={};
+let lastEventId=-1;
+let roomDetailsExpanded=false;
 function send(type,payload){emit(type,payload,r=>{if(r?.ok)status('');});}
 function make(tag,txt,cls){const e=document.createElement(tag);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e;}
 function button(txt,fn,cls){const b=make('button',txt,cls||'secondary');b.onclick=fn;return b;}
 function ruleOptions(room){
  roomInfo=room;
  showScores();
+ $('room-details-toggle').classList.toggle('hidden',!room.gameStarted);
+ $('room-details').classList.toggle('hidden',room.gameStarted&&!roomDetailsExpanded);
  const isHost=room.host===identity?.id;
  $('bot-setup').classList.toggle('hidden',!isHost||room.gameStarted);
  const bots=$('bot-list');bots.replaceChildren();
@@ -47,7 +51,8 @@ $('save-rules').onclick=()=>{
  send('game:configure',opts);
 };
 $('start-uno').onclick=()=>send('game:start',{});
-$('bot-add').onclick=()=>send('bot:add',$('bot-level').value);
+$('bot-add').onclick=()=>send('bot:add',{difficulty:$('bot-level').value,name:$('bot-name').value.trim()});
+$('room-details-toggle').onclick=()=>{roomDetailsExpanded=!roomDetailsExpanded;$('room-details').classList.toggle('hidden',!roomDetailsExpanded);$('room-details-toggle').textContent=roomDetailsExpanded?'▾ Raum & Mitspieler ausblenden':'▸ Raum & Mitspieler anzeigen';};
 function card(c,playable){
  const b=make('button',symbols[c.value]||c.value,'uno-card '+c.color);
  b.disabled=!playable;
