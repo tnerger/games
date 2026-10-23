@@ -46,3 +46,13 @@
 .uno-heading{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:24px 0 18px}
 .uno-heading .uno-logo{width:145px;max-width:48%;height:auto;flex-shrink:0;filter:drop-shadow(0 5px 8px #0006)}
 .uno-heading span{font-size:1.15rem;font-weight:850}
+
+#game-picker,#bot-setup{margin:16px 0;padding:14px;border:1px solid #52608b;border-radius:14px}
+#game-choice{width:100%;min-height:54px;border-radius:10px;padding:10px;background:#192342;color:#fff;font:inherit}
+#skyjo-hand{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;max-width:400px;margin:20px auto}
+.skyjo-card,.skyjo-empty{width:100%;min-height:92px;border-radius:12px;font-size:2rem;font-weight:900;border:3px solid #fff8;color:#fff;box-shadow:0 3px 9px #0005}
+.skyjo-card.back{background:linear-gradient(145deg,#1b3f9b,#3876e0)}.skyjo-card.low{background:#26785e}.skyjo-card.medium{background:#3899bc}.skyjo-card.high{background:#b59b32}.skyjo-card.highest{background:#c25d46}
+.skyjo-card:disabled{opacity:1;cursor:default}.skyjo-card:not(:disabled){outline:3px solid #f9d768;outline-offset:1px}
+.skyjo-empty{display:grid;place-items:center;border:2px dashed #53617e;box-shadow:none;color:#7785a1}
+#skyjo-piles{display:flex;gap:12px;justify-content:center;margin:18px 0}#skyjo-piles button{flex:1;max-width:190px;min-height:85px}
+#skyjo-last{padding:14px;border-radius:12px;background:#1b2343;min-height:48px}
