@@ -34,7 +34,9 @@
   $('uno-play').classList.add('hidden');$('skyjo-play').classList.add('hidden');$('wizard-play').classList.remove('hidden');
   const mine=g.turn===identity?.id;
   $('game-switch').disabled=!g.finished;
-  $('wizard-round').textContent='Runde '+g.round+' / '+g.maxRounds+' · Geber: '+name(g.dealer);
+  const dealerIndex=g.players.findIndex(p=>p.id===g.dealer);
+  const firstPlayer=g.players[(dealerIndex+1)%g.players.length];
+  $('wizard-round').textContent='Runde '+g.round+' / '+g.maxRounds+' · Geber: '+name(g.dealer)+' · Erste Karte: '+name(firstPlayer.id);
   const trump=$('wizard-trump');trump.replaceChildren(node('strong','Trumpf: '+(g.trump?suits[g.trump]:'Kein Trumpf')));
   if(g.indicator)trump.append(card(g.indicator));
   const table=$('wizard-table');table.replaceChildren();
@@ -47,7 +49,7 @@
   if(last)actions.append(node('p',last.text,'wizard-last'));
   const me=g.players.find(p=>p.id===identity?.id);
   const personal=$('wizard-my-tricks');
-  personal.textContent=me?(me.bid===null?'🎯 Deine Ansage: noch offen · Gewonnene Stiche: '+me.tricks:'🎯 Angesagt: '+me.bid+' · Gewonnen: '+me.tricks+' · Noch benötigt: '+Math.max(0,me.bid-me.tricks)):'';
+  personal.textContent=me?(me.bid===null?'🎯 Ansage: offen · Stiche: '+me.tricks:'🎯 Ansage '+me.bid+' · Stiche '+me.tricks):'';
   const hand=$('wizard-hand');hand.replaceChildren();for(const c of g.hand)hand.append(card(c,mine&&g.phase==='playing'&&g.legal.includes(c.id),x=>send('game:action',{type:'play',cardId:x.id})));
   const scores=$('wizard-scoreboard');scores.replaceChildren(node('h3','Stiche & Punktestand'));
   const t=node('table');const th=node('tr');for(const x of ['Spieler','Ansage','Stiche','Gesamt'])th.append(node('th',x));t.append(th);
@@ -69,7 +71,7 @@
  async function processState(g){
   const old=latestState;
   if(!old||old.round!==g.round||old.game!=='wizard'){
-   latestState=g;displayedTrickKey=null;await renderState(g);return;
+   latestState=g;displayedTrickKey=null;const notice=$('wizard-trick-announcement');notice.textContent='';notice.classList.remove('wizard-trick-win');await renderState(g);return;
   }
   const oldEvents=new Set(old.events.map(e=>e.id));
   const fresh=g.events.filter(e=>!oldEvents.has(e.id));
@@ -78,7 +80,7 @@
   latestState=g;
   if(!plays.length&&!finishedTrick){await renderState(g);return;}
   const table=$('wizard-table');
-  if(old.trick.length===0)table.replaceChildren();
+  if(old.trick.length===0){table.replaceChildren();const notice=$('wizard-trick-announcement');notice.textContent='';notice.classList.remove('wizard-trick-win');}
   for(const e of plays){
    const played=g.trick.find(p=>p.id===e.actor)||g.lastTrick?.cards.find(p=>p.id===e.actor);
    if(played)await showPlay(played);
