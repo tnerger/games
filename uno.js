@@ -82,6 +82,7 @@ function act(g,id,a){
  if(idx<0)throw Error('Karte nicht gefunden.');
  const c=g.hands[id][idx];
  if(!canPlay(g,c))throw Error('Diese Karte passt nicht.');
+ if(!g.rules.actionFinish && g.hands[id].length===1 && ['skip','reverse','draw2','wild','wild4'].includes(c.value))throw Error('Mit einer Aktionskarte darf nach dieser Regel nicht beendet werden.');
  if(c.value==='wild4' && !colors.includes(a.color))throw Error('Wähle für +4 eine Farbe.');
  if(c.value==='wild' && !colors.includes(a.color))throw Error('Wähle eine Farbe.');
  const oldColor=g.color;
@@ -97,7 +98,6 @@ function act(g,id,a){
  if(c.value==='7'&&g.rules.sevenZero&&g.hands[id].length)g.awaitingSwap=true;
  if(c.value==='0'&&g.rules.sevenZero){const old={...g.hands};for(let i=0;i<g.players.length;i++)g.hands[g.players[next(g,i)]]=old[g.players[i]];}
  if(!g.hands[id].length){
-  if(!g.rules.actionFinish&&['skip','reverse','draw2','wild','wild4'].includes(c.value))throw Error('Mit dieser Karte darf nicht beendet werden.');
   g.finished=true;g.winner=id;g.log.push('Spiel beendet!');return;
  }
  if(g.awaitingSwap)return;
