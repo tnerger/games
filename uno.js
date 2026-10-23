@@ -25,7 +25,7 @@ function create(players,opts){
  for(const id of players) hands[id]=Array.from({length:7},()=>deck.pop());
  let top=deck.pop();
  while(top.value==='wild4'){deck.unshift(top);shuffle(deck);top=deck.pop();}
- const game={players:[...players],hands,deck,discard:[top],turn:0,direction:1,color:top.color==='wild'?colors[crypto.randomInt(4)]:top.color,rules:{...defaults,...opts},pending:0,pendingType:null,awaitingColor:false,awaitingSwap:false,awaitingChallenge:false,wild4Illegal:false,wild4Player:null,finished:false,winner:null,log:['UNO gestartet!']};
+ const game={players:[...players],hands,deck,discard:[top],turn:0,direction:1,color:top.color==='wild'?colors[crypto.randomInt(4)]:top.color,rules:{...defaults,...opts},pending:0,pendingType:null,awaitingColor:false,awaitingSwap:false,awaitingChallenge:false,wild4Illegal:false,wild4Player:null,finished:false,winner:null,log:['UNO wurde gestartet.'],revision:0};
  if(top.value==='skip')game.turn=1%players.length;
  if(top.value==='reverse'){game.direction=-1;game.turn=players.length===2?0:players.length-1;}
  if(top.value==='draw2'){const target=game.players[game.turn];draw(game,target,2);game.turn=next(game,game.turn);}
@@ -37,9 +37,10 @@ function draw(g,id,n){let count=0;for(let i=0;i<n;i++){if(!g.deck.length){const 
 function canPlay(g,c){if(g.pending)return g.rules.stacking&&g.pendingType==='draw2'&&c.value==='draw2';return c.color==='wild'||c.color===g.color||c.value===g.discard.at(-1).value;}
 function view(g,id){
  const p=g.players[g.turn];
- return {players:g.players.map(pid=>({id:pid,count:g.hands[pid].length})),hand:g.hands[id]||[],top:g.discard.at(-1),color:g.color,turn:p,direction:g.direction,pending:g.pending,awaitingColor:g.awaitingColor,awaitingSwap:g.awaitingSwap,awaitingChallenge:g.awaitingChallenge,finished:g.finished,winner:g.winner,rules:g.rules,descriptions,log:g.log.slice(-5),canPlay:(g.hands[id]||[]).filter(c=>id===p&&!g.awaitingColor&&!g.awaitingSwap&&!g.awaitingChallenge&&canPlay(g,c)).map(c=>c.id)};
+ return {players:g.players.map(pid=>({id:pid,count:g.hands[pid].length})),hand:g.hands[id]||[],top:g.discard.at(-1),color:g.color,turn:p,direction:g.direction,pending:g.pending,awaitingColor:g.awaitingColor,awaitingSwap:g.awaitingSwap,awaitingChallenge:g.awaitingChallenge,finished:g.finished,winner:g.winner,rules:g.rules,descriptions,log:g.log,revision:g.revision,canPlay:(g.hands[id]||[]).filter(c=>id===p&&!g.awaitingColor&&!g.awaitingSwap&&!g.awaitingChallenge&&canPlay(g,c)).map(c=>c.id)};
 }
 function act(g,id,a){
+ g.revision++;
  if(g.finished)throw Error('Die Runde ist beendet.');
  if(g.players[g.turn]!==id)throw Error('Du bist nicht am Zug.');
  if(!a||typeof a!=='object')throw Error('Ungültige Aktion.');
