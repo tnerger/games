@@ -1,6 +1,6 @@
 {
   "name": "games",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "description": "Lokale barrierearme Multiplayer-Spieleplattform",
   "scripts": {
