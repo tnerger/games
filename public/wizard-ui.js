@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),send=(name,data)=>emit(name,data);
- let room=null,roundSeen=null;
+ let room=null,roundSeen=null,shownResultKey=null;
  let displayedTrickKey=null,latestState=null,playbackBusy=false;
  const pendingStates=[];
  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -23,10 +23,12 @@
   $('start-wizard').classList.toggle('hidden',r.host!==identity?.id);
   $('wizard-play').classList.toggle('hidden',active!=='wizard');
   if(active==='wizard'){$('uno-play').classList.add('hidden');$('skyjo-play').classList.add('hidden');$('uno-setup').classList.add('hidden');$('skyjo-setup').classList.add('hidden');}
-  if(!r.gameStarted)roundSeen=null;
+  if(!r.gameStarted){roundSeen=null;shownResultKey=null;$('wizard-result-overlay').classList.add('hidden');$('wizard-result-reopen').classList.add('hidden');}
  }
  $('start-wizard').onclick=()=>send('game:start',{});
  $('wizard-next').onclick=()=>send('game:restart',{});
+ $('wizard-result-close').onclick=()=>{$('wizard-result-overlay').classList.add('hidden');$('wizard-result-reopen').focus();};
+ $('wizard-result-reopen').onclick=()=>{$('wizard-result-overlay').classList.remove('hidden');$('wizard-result-close').focus();};
  $('wizard-log-toggle').onclick=()=>{const l=$('wizard-log');const open=l.classList.toggle('hidden')===false;$('wizard-log-toggle').textContent=open?'Spielverlauf ausblenden':'Spielverlauf anzeigen';};
  socket.on('room',roomUpdate);
  async function renderState(g){
@@ -61,7 +63,28 @@
    scores.append(result);
   }
   $('wizard-next').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
+  updateResults(g);
   const log=$('wizard-log');log.replaceChildren(...g.events.slice().reverse().map(e=>node('p',new Date(e.at).toLocaleTimeString('de-DE')+' · '+(e.actor?name(e.actor)+': ':'')+e.text)));
+ }
+ function updateResults(g){
+  const overlay=$('wizard-result-overlay'),reopen=$('wizard-result-reopen');
+  if(!g.finished||!g.lastRound){overlay.classList.add('hidden');reopen.classList.add('hidden');return;}
+  const key=(room?.code||'')+':'+g.lastRound.round;
+  reopen.classList.remove('hidden');
+  $('wizard-result-title').textContent=g.matchFinished?'🏆 Spiel beendet!':'✨ Runde '+g.lastRound.round+' beendet!';
+  $('wizard-result-description').textContent='So haben alle bei ihren Stichansagen abgeschnitten:';
+  const table=$('wizard-result-table');table.replaceChildren();
+  const t=node('table');const header=node('tr');for(const label of ['Spieler','Ansage','Stiche','Punkte','Gesamt'])header.append(node('th',label));t.append(header);
+  for(const p of g.players){const tr=node('tr');const delta=g.lastRound.points[p.id];
+   if(g.lastRound.bids[p.id]===g.lastRound.tricks[p.id])tr.classList.add('wizard-exact');
+   for(const v of [name(p.id),g.lastRound.bids[p.id],g.lastRound.tricks[p.id],(delta>0?'+':'')+delta,p.score])tr.append(node('td',String(v)));
+   t.append(tr);
+  }
+  table.append(t);
+  const winners=$('wizard-result-winners');
+  if(g.matchFinished){const best=Math.max(...g.players.map(p=>p.score));winners.textContent='🏆 Gewinner: '+g.players.filter(p=>p.score===best).map(p=>name(p.id)).join(' & ');}
+  else winners.textContent='✓ Genau getroffene Ansagen sind hervorgehoben.';
+  if(shownResultKey!==key){shownResultKey=key;overlay.classList.remove('hidden');}
  }
  function trickKey(g){return (room?.code||'')+':'+g.round+':'+(g.lastTrick?.number||0);}
  async function showPlay(play,completed=false){
