@@ -88,7 +88,7 @@ socket.on('game:state',state=>{
  const events=state.events||[];
  const newest=events.at(-1);
  const playerName=id=>roomInfo?.players.find(p=>p.id===id)?.name||'Mitspieler';
- const describe=e=>e?(e.actor?playerName(e.actor)+' hat '+e.text:e.text):'UNO wurde gestartet.';
+ const describe=e=>{if(!e)return 'UNO wurde gestartet.';if(!e.actor)return e.text;const t=e.text;if(t.startsWith('Karte gelegt: '))return playerName(e.actor)+' hat '+t.slice(14)+' gelegt.';if(t.startsWith('Strafkarten gezogen: '))return playerName(e.actor)+': '+t;if(t.includes('gezogen'))return playerName(e.actor)+' hat '+t.toLowerCase();return playerName(e.actor)+': '+t;};
  current=state;
  $('uno-setup').classList.add('hidden');$('uno-play').classList.remove('hidden');
  const mine=state.turn===identity?.id;
