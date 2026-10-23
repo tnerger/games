@@ -29,7 +29,7 @@ function create(players,opts){
  const game={players:[...players],hands,deck,discard:[top],turn:0,direction:1,color:top.color==='wild'?colors[crypto.randomInt(4)]:top.color,rules:{...defaults,...opts},pending:0,pendingType:null,awaitingColor:false,awaitingSwap:false,awaitingChallenge:false,wild4Illegal:false,wild4Player:null,finished:false,winner:null,finishAfterPenalty:null,log:['UNO wurde gestartet.'],revision:0};
  if(top.value==='skip')game.turn=1%players.length;
  if(top.value==='reverse'){game.direction=-1;game.turn=players.length===2?0:players.length-1;}
- if(top.value==='draw2'){const target=game.players[game.turn];draw(game,target,2);game.turn=next(game,game.turn);}
+ if(top.value==='draw2'){const target=game.players[game.turn];draw(game,target,2);game.log.push('Startkarte +2: '+target+' zieht zwei Karten'+(game.rules.penaltySkip?' und setzt aus.':' und bleibt am Zug.'));if(game.rules.penaltySkip)game.turn=next(game,game.turn);}
  if(top.value==='wild')game.color=colors[crypto.randomInt(4)];
  return game;
 }
