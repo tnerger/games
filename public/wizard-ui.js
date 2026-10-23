@@ -19,7 +19,7 @@
   $('wizard-setup').classList.toggle('hidden',r.gameStarted||selected!=='wizard');
   $('start-wizard').classList.toggle('hidden',r.host!==identity?.id);
   $('wizard-play').classList.toggle('hidden',active!=='wizard');
-  if(active==='wizard'){$('uno-play').classList.add('hidden');$('skyjo-play').classList.add('hidden');}
+  if(active==='wizard'){$('uno-play').classList.add('hidden');$('skyjo-play').classList.add('hidden');$('uno-setup').classList.add('hidden');$('skyjo-setup').classList.add('hidden');}
   if(!r.gameStarted)roundSeen=null;
  }
  $('start-wizard').onclick=()=>send('game:start',{});
