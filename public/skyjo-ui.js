@@ -68,7 +68,7 @@ socket.on('game:state',g=>{
  if(mine&&phase==='flip')actions.append(el('p','Tippe auf eine verdeckte Karte, um sie aufzudecken.'));
  const players=$('skyjo-players');players.replaceChildren(el('h3','Karten der Mitspieler'));
  for(const p of g.players.filter(p=>p.id!==identity?.id)){
-  const details=el('details',undefined,'skyjo-opponent');details.open=expandedOpponents.has(p.id);details.addEventListener('toggle',()=>{if(details.open)expandedOpponents.add(p.id);else expandedOpponents.delete(p.id);});const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');
+  const details=el('details',undefined,'skyjo-opponent');details.open=expandedOpponents.has(p.id);const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');summary.addEventListener('click',()=>{if(details.open)expandedOpponents.delete(p.id);else expandedOpponents.add(p.id);});
   const grid=el('div',undefined,'skyjo-opponent-grid');
   for(const c of p.layout||[])grid.append(c?card(c.open?c.value:null,()=>{},true):el('div','—','skyjo-empty'));
   details.append(summary,grid);players.append(details);
