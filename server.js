@@ -95,7 +95,7 @@ function scheduleBot(r){
  if(!r.game||r.game.finished)return;
  const id=r.game.players[r.game.turn];const player=r.players.get(id);
  if(!player?.bot||botTimers.has(r.code))return;
- const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||r.game.players[r.game.turn]!==id)return;try{const action=bots.decide(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},850);
+ const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||r.game.players[r.game.turn]!==id)return;try{const action=bots.decide(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},2400);
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
