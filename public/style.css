@@ -93,3 +93,32 @@
 #skyjo-log{max-height:250px;overflow-y:auto;overscroll-behavior:contain;background:#171c36;border:1px solid #5c6791;border-radius:12px;padding:12px 16px;font-size:.8rem;color:#b7c1e6}
 #skyjo-log p{margin:0;padding:9px 0;border-bottom:1px solid #414767;font-size:.9rem;line-height:1.4}
 #skyjo-log p:last-child{border-bottom:0}
+
+/* Wizard: illustrated original fantasy card set */
+#wizard-round,#wizard-trump,#wizard-status{margin:12px 0}
+#wizard-trump{display:flex;align-items:center;gap:14px;min-height:50px}
+#wizard-trump .wizard-card{width:58px;height:88px;flex:none}
+#wizard-table{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;min-height:130px;padding:14px;background:radial-gradient(ellipse,#314c59,#19293b);border:2px solid #8f794e;border-radius:18px}
+.wizard-played{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:.78rem}
+.wizard-played .wizard-card{width:72px;height:110px}
+#wizard-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:16px -8px}
+.wizard-card{position:relative;display:block;flex:0 0 76px;width:76px;height:116px;min-height:0;margin:0;padding:0;overflow:hidden;border:3px solid #e0bc72;border-radius:9px;background:#f5e7c9;color:#172440;box-shadow:0 4px 8px #0008}
+.wizard-card:disabled{opacity:1;cursor:default}
+.wizard-card .wizard-art{position:absolute;inset:2px;background-size:cover;background-position:center}
+.wizard-card .wizard-value{position:absolute;left:4px;top:3px;font:bold 1.5rem Georgia,serif;color:#fff;text-shadow:1px 2px 2px #111, -1px -1px 2px #111}
+.wizard-card .wizard-card-name{position:absolute;bottom:0;left:0;right:0;background:#f8e7cbe9;font:bold .65rem Georgia,serif;text-align:center;padding:4px 1px;color:#282337}
+.wizard-card.playable{outline:3px solid #ffda72;outline-offset:2px;cursor:pointer;transform:translateY(-4px)}
+.wizard-card.playable:active{transform:translateY(-8px)}
+.wizard-choice{display:inline-block;width:calc(50% - 8px);margin:5px 4px;min-height:48px}
+.wizard-choice.blue{background:#3a80bd;color:white}.wizard-choice.red{background:#ad4742;color:white}.wizard-choice.green{background:#367f59;color:white}.wizard-choice.yellow{background:#d3a547;color:#222}
+.wizard-bids{display:flex;flex-wrap:wrap;gap:7px;max-height:180px;overflow:auto;padding:4px}
+.wizard-bids button{width:48px;min-height:48px;margin:0;padding:5px}
+#wizard-scoreboard{overflow-x:auto}
+#wizard-scoreboard table{width:100%;border-collapse:collapse;font-size:.87rem}
+#wizard-scoreboard td,#wizard-scoreboard th{padding:9px 4px;border-bottom:1px solid #5b6281;text-align:right}
+#wizard-scoreboard td:first-child,#wizard-scoreboard th:first-child{text-align:left}
+.wizard-result{background:#1b2941;border:1px solid #a98a51;border-radius:12px;padding:12px;margin:16px 0}
+.wizard-result p{margin:6px 0}
+#wizard-log{max-height:250px;overflow-y:auto;background:#171c36;border:1px solid #5c6791;border-radius:12px;padding:12px 16px}
+#wizard-log p{margin:0;padding:8px 0;border-bottom:1px solid #414767;font-size:.85rem}
+@media(max-width:380px){#wizard-hand{gap:5px}.wizard-card{flex-basis:68px;width:68px;height:105px}}
