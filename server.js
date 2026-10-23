@@ -23,14 +23,14 @@ function save() {
   fs.mkdirSync(dataDir, { recursive: true });
   const tmp = dataFile + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify([...rooms.values()].map(r => ({
-    code: r.code, host: r.host, scores:r.scores||{}, skyjoScores:r.skyjoScores||{}, selectedGame:r.selectedGame||'uno', players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
+    code: r.code, host: r.host, scores:r.scores||{}, skyjoScores:r.skyjoScores||{}, selectedGame:r.selectedGame||'uno', options:r.options||uno.defaults, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
   }))));
   fs.renameSync(tmp, dataFile);
 }
 try {
   for (const r of JSON.parse(fs.readFileSync(dataFile, 'utf8'))) {
     if (!/^[A-F0-9]{6}$/.test(r.code) || !Array.isArray(r.players)) continue;
-    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{},skyjoScores:r.skyjoScores||{},selectedGame:r.selectedGame||'uno', players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
+    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{},skyjoScores:r.skyjoScores||{},selectedGame:r.selectedGame||'uno', options:{...uno.defaults,...(r.options||{})}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
   }
 } catch (err) { if (err.code !== 'ENOENT') console.error('Spielstände konnten nicht geladen werden:', err.message); }
 app.use(express.static(path.join(__dirname, 'public')));
@@ -149,7 +149,7 @@ io.on('connection', socket => {
     if (!validId(identity?.id) || !validName(identity?.name)) return respond(ack, { error: 'Bitte einen Namen eingeben.' });
     let c;
     do { c = code(); } while (rooms.has(c));
-    const r = { code: c, host: identity.id, scores:{},skyjoScores:{},selectedGame:'uno', players: new Map() };
+    const r = { code: c, host: identity.id, scores:{},skyjoScores:{},selectedGame:'uno',options:{...uno.defaults}, players: new Map() };
     rooms.set(c, r);
     joinRoom(r, identity, ack);
   });
@@ -166,7 +166,7 @@ io.on('connection', socket => {
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Nur der Raumleiter kann vor dem Start Regeln ändern.'});
     if(!options||typeof options!=='object')return respond(ack,{error:'Ungültige Regeln.'});
     r.options=Object.fromEntries(Object.keys(uno.defaults).map(k=>[k,options[k]===true]));
-    publish(r);respond(ack,{ok:true});
+    save();publish(r);respond(ack,{ok:true});
   });
   socket.on('game:start', (_,ack)=>{
     const r=rooms.get(socket.data.room);
