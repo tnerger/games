@@ -1,13 +1,14 @@
 'use strict';
 const crypto = require('node:crypto');
 const colors = ['red','yellow','green','blue'];
-const defaults = { stacking:false, sevenZero:false, drawUntilPlayable:false, challenge:true, actionFinish:true };
+const defaults = { stacking:false, sevenZero:false, drawUntilPlayable:false, challenge:true, actionFinish:true, penaltySkip:true };
 const descriptions = {
  stacking:'Auf +2 darf eine weitere +2 gelegt werden. Die Strafe addiert sich. +4 wird nicht gemischt.',
  sevenZero:'Eine 7 tauscht deine Hand mit einer gewählten Person; bei 0 wandern alle Hände weiter.',
  drawUntilPlayable:'Ohne passende Karte ziehst du bis eine Karte passt (maximal bis der Stapel leer ist).',
  challenge:'Eine +4 darf angezweifelt werden. Wer falsch liegt, zieht sechs statt vier Karten.',
- actionFinish:'Die letzte Karte darf eine Aktionskarte sein. Ihre Wirkung wird noch ausgeführt.'
+ actionFinish:'Die letzte Karte darf eine Aktionskarte sein. Ihre Wirkung wird noch ausgeführt.',
+ penaltySkip:'Nach +2 oder +4 muss die betroffene Person aussetzen. Ausgeschaltet: Nach dem Ziehen ist sie selbst am Zug.'
 };
 const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a; };
 const makeDeck = () => {
@@ -62,7 +63,7 @@ function act(g,id,a){
  }
  if(a.type==='draw'){
   if(g.pending){
-   draw(g,id,g.pending);g.log.push('Strafkarten gezogen: '+g.pending);g.pending=0;g.pendingType=null;g.turn=next(g);return;
+   draw(g,id,g.pending);g.log.push('Strafkarten gezogen: '+g.pending);g.pending=0;g.pendingType=null;if(g.rules.penaltySkip)g.turn=next(g);return;
   }
   const n=draw(g,id,1);
   if(g.rules.drawUntilPlayable){
@@ -104,6 +105,6 @@ function act(g,id,a){
  if(g.awaitingSwap)return;
  g.turn=next(g);
  if(c.value==='wild4'&&g.rules.challenge){g.awaitingChallenge=true;return;}
- if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.log.push('Strafkarten gezogen: '+g.pending+' – Zug ausgesetzt.');g.turn=next(g);g.pending=0;g.pendingType=null;}
+ if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.log.push('Strafkarten gezogen: '+g.pending+(g.rules.penaltySkip?' – Zug ausgesetzt.':' – Spieler ist am Zug.'));if(g.rules.penaltySkip)g.turn=next(g);g.pending=0;g.pendingType=null;}
 }
 module.exports={create,view,act,defaults,descriptions};
