@@ -50,7 +50,8 @@ socket.on('game:state',g=>{
  const players=$('skyjo-players');players.replaceChildren(el('h3','Mitspieler'));for(const p of g.players)players.append(el('p',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten'));
  const scores=$('skyjo-scores');scores.replaceChildren(el('h3','Punktetafel'));
  for(const p of g.players)scores.append(el('p',who(p.id)+': '+(g.scores[p.id]||0)+' Punkte'+(g.roundScores?' (Runde: '+g.roundScores[p.id]+')':'')));
- $('skyjo-restart').classList.toggle('hidden',!g.finished||room?.host!==identity?.id);
+ $('skyjo-restart').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
+ if(g.matchFinished)$('skyjo-turn').textContent='🏆 Spiel beendet! '+who(g.players.reduce((a,b)=>g.scores[a]<=g.scores[b]?a:b))+' gewinnt mit den wenigsten Punkten.';
  $('game-switch').disabled=!g.finished;
  const log=$('skyjo-log');log.replaceChildren(...g.events.slice().reverse().map(e=>el('p',new Date(e.at).toLocaleTimeString('de-DE')+' · '+(e.actor?who(e.actor)+': ':'')+e.text)));
 });
