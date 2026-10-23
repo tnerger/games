@@ -3,6 +3,8 @@
 const $=id=>document.getElementById(id);
 const send=(name,data)=>emit(name,data);
 let room=null,lastState=null,shownResultKey=null;
+const expandedOpponents=new Set();
+let expandedRoomCode=null;
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const btn=(label,action,cls='secondary')=>{const x=el('button',label,cls);x.onclick=action;return x;};
 const who=id=>room?.players.find(p=>p.id===id)?.name||'Mitspieler';
@@ -12,7 +14,7 @@ function card(v,onclick,disabled=false){
  x.disabled=disabled;x.setAttribute('aria-label',v===null?'Verdeckte Karte':'Karte '+v);return x;
 }
 function updateRoom(r){
- room=r;if(!r.gameStarted){lastState=null;shownResultKey=null;$('skyjo-result-overlay').classList.add('hidden');}const selected=r.selectedGame||'uno',active=r.activeGame;
+ room=r;if(expandedRoomCode!==r.code){expandedOpponents.clear();expandedRoomCode=r.code;}if(!r.gameStarted){lastState=null;shownResultKey=null;$('skyjo-result-overlay').classList.add('hidden');}const selected=r.selectedGame||'uno',active=r.activeGame;
  $('game-picker').classList.toggle('hidden',r.gameStarted);
  $('game-choice').value=selected;$('game-choice').disabled=r.host!==identity?.id;
  $('skyjo-setup').classList.toggle('hidden',r.gameStarted||selected!=='skyjo');
@@ -66,7 +68,7 @@ socket.on('game:state',g=>{
  if(mine&&phase==='flip')actions.append(el('p','Tippe auf eine verdeckte Karte, um sie aufzudecken.'));
  const players=$('skyjo-players');players.replaceChildren(el('h3','Karten der Mitspieler'));
  for(const p of g.players.filter(p=>p.id!==identity?.id)){
-  const details=el('details',undefined,'skyjo-opponent');const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');
+  const details=el('details',undefined,'skyjo-opponent');details.open=expandedOpponents.has(p.id);details.addEventListener('toggle',()=>{if(details.open)expandedOpponents.add(p.id);else expandedOpponents.delete(p.id);});const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');
   const grid=el('div',undefined,'skyjo-opponent-grid');
   for(const c of p.layout||[])grid.append(c?card(c.open?c.value:null,()=>{},true):el('div','—','skyjo-empty'));
   details.append(summary,grid);players.append(details);
