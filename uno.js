@@ -90,7 +90,7 @@ function act(g,id,a){
  g.wild4Illegal=c.value==='wild4'&&g.hands[id].some(x=>x.id!==c.id&&x.color===oldColor);
  g.hands[id].splice(idx,1);g.discard.push(c);
  if(c.color!=='wild')g.color=c.color;else g.color=a.color;
- g.log.push('Karte gelegt: '+c.color+' '+c.value);
+ g.log.push('Karte gelegt: '+({red:'Rot',yellow:'Gelb',green:'Grün',blue:'Blau',wild:'Schwarz'}[c.color])+' '+({skip:'Aussetzen',reverse:'Richtungswechsel',draw2:'+2',wild:'Farbwahl',wild4:'+4'}[c.value]||c.value)+(c.color==='wild'?' – gewählte Farbe: '+({red:'Rot',yellow:'Gelb',green:'Grün',blue:'Blau'}[a.color]):''));
  if(c.value==='reverse')g.direction*=-1;
  if(c.value==='draw2'){g.pending+=2;g.pendingType='draw2';}
  if(c.value==='wild4'){g.pending=4;g.pendingType='wild4';g.wild4Player=id;}
@@ -104,6 +104,6 @@ function act(g,id,a){
  if(g.awaitingSwap)return;
  g.turn=next(g);
  if(c.value==='wild4'&&g.rules.challenge){g.awaitingChallenge=true;return;}
- if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.turn=next(g);g.pending=0;g.pendingType=null;}
+ if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.log.push('Strafkarten gezogen: '+g.pending+' – Zug ausgesetzt.');g.turn=next(g);g.pending=0;g.pendingType=null;}
 }
 module.exports={create,view,act,defaults,descriptions};
