@@ -63,7 +63,6 @@ function act(g,id,a){
   if(g.pending){
    draw(g,id,g.pending);g.log.push('Strafkarten gezogen: '+g.pending);g.pending=0;g.pendingType=null;g.turn=next(g);return;
   }
-  if(g.hands[id].some(c=>canPlay(g,c)))throw Error('Du hast eine spielbare Karte.');
   const n=draw(g,id,1);
   if(g.rules.drawUntilPlayable){
    while(g.deck.length && !g.hands[id].some(c=>canPlay(g,c)))draw(g,id,1);
@@ -83,6 +82,7 @@ function act(g,id,a){
  const c=g.hands[id][idx];
  if(!canPlay(g,c))throw Error('Diese Karte passt nicht.');
  if(!g.rules.actionFinish && g.hands[id].length===1 && ['skip','reverse','draw2','wild','wild4'].includes(c.value))throw Error('Mit einer Aktionskarte darf nach dieser Regel nicht beendet werden.');
+ if(c.value==='wild4' && !g.rules.challenge && g.hands[id].some(x=>x.id!==c.id&&x.color===g.color))throw Error('+4 ist nicht erlaubt, solange du eine Karte der aktuellen Farbe hast.');
  if(c.value==='wild4' && !colors.includes(a.color))throw Error('Wähle für +4 eine Farbe.');
  if(c.value==='wild' && !colors.includes(a.color))throw Error('Wähle eine Farbe.');
  const oldColor=g.color;
