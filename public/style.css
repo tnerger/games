@@ -25,3 +25,7 @@
 .drawing .flying-card:nth-child(5){animation-delay:.48s}
 @keyframes cardfly{0%{opacity:0;transform:translate(65px,-50px) rotate(30deg) scale(.7)}45%{opacity:1}100%{opacity:0;transform:translate(-35px,18px) rotate(-12deg) scale(1)}}
 @media(prefers-reduced-motion:reduce){.drawing .flying-card{animation:none;opacity:1}}
+
+#uno-last-move{overflow:hidden;min-height:60px;padding:12px;background:#1b2343;border-radius:12px}
+#room-details-toggle{margin-bottom:12px}
+#uno-log time{color:#ffc66b}
