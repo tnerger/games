@@ -12,10 +12,14 @@ const help={
 const names={red:'Rot',yellow:'Gelb',green:'Grün',blue:'Blau',wild:'Schwarz'};
 const symbols={skip:'⦸',reverse:'⇄',draw2:'+2',wild:'🌈',wild4:'+4'};
 let current=null;
+let roomInfo=null;
+let lastRevision=-1;
 function send(type,payload){emit(type,payload,r=>{if(r?.ok)status('');});}
 function make(tag,txt,cls){const e=document.createElement(tag);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e;}
 function button(txt,fn,cls){const b=make('button',txt,cls||'secondary');b.onclick=fn;return b;}
 function ruleOptions(room){
+ roomInfo=room;
+ showScores();
  const el=$('uno-options');el.replaceChildren();
  const rules=room.gameRules||{};
  for(const [key,title] of Object.entries(labels)){
@@ -61,11 +65,22 @@ function card(c,playable){
  return b;
 }
 socket.on('room',ruleOptions);
+$('uno-restart').onclick=()=>send('game:restart',{});
+$('uno-toggle-log').onclick=()=>{const log=$('uno-log');const open=log.classList.toggle('hidden')===false;$('uno-toggle-log').textContent=open?'Spielverlauf ausblenden':'Spielverlauf anzeigen';$('uno-toggle-log').setAttribute('aria-expanded',String(open));};
+function showScores(){if(!roomInfo)return;const target=$('uno-scoreboard');target.replaceChildren(make('h3','Punktetafel'));const table=make('table');const header=make('tr');for(const x of ['Spieler','Siege','Punkte'])header.append(make('th',x));table.append(header);for(const p of roomInfo.players){const row=make('tr');const score=roomInfo.scores?.[p.id]||{wins:0,points:0};for(const v of [p.name,score.wins,score.points])row.append(make('td',String(v)));table.append(row);}target.append(table);}
+
 socket.on('game:state',state=>{
  current=state;
  $('uno-setup').classList.add('hidden');$('uno-play').classList.remove('hidden');
  const mine=state.turn===identity?.id;
- $('uno-turn').textContent=state.finished?'🏆 Gewonnen: '+(state.players.find(p=>p.id===state.winner)?.id===identity.id?'Du':state.winner):mine?'Du bist am Zug!':'Ein Mitspieler ist am Zug.';
+ const playerName=id=>roomInfo?.players.find(p=>p.id===id)?.name||'Mitspieler';
+ $('uno-turn').textContent=state.finished?'🏆 Gewonnen: '+playerName(state.winner):mine?'🎯 DU BIST AM ZUG!':'Am Zug: '+playerName(state.turn);
+ $('uno-turn').classList.remove('turn-flash');if(state.revision!==lastRevision){void $('uno-turn').offsetWidth;$('uno-turn').classList.add('turn-flash');lastRevision=state.revision;}
+ $('uno-notice').textContent=state.log.at(-1)||'UNO gestartet!';
+ const colorText={red:'ROT',yellow:'GELB',green:'GRÜN',blue:'BLAU'};
+ const banner=$('uno-color-banner');banner.textContent='AKTUELLE FARBE: '+colorText[state.color];banner.className='chosen-color '+state.color;
+ $('uno-restart').classList.toggle('hidden',!state.finished||roomInfo?.host!==identity.id);
+ showScores();
  const top=$('uno-top');top.replaceChildren(card(state.top,false));
  $('uno-effect').textContent='Aktuelle Farbe: '+names[state.color]+' · Karten der anderen: '+state.players.filter(p=>p.id!==identity.id).map(p=>p.count).join(', ');
  const hand=$('uno-hand');hand.replaceChildren(...state.hand.map(c=>card(c,mine&&!state.finished&&state.canPlay.includes(c.id))));
@@ -80,6 +95,6 @@ socket.on('game:state',state=>{
    actions.append(button(state.pending?'Strafe ziehen ('+state.pending+')':'Karte ziehen',()=>send('game:action',{type:'draw'})));
   }
  }
- $('uno-log').textContent=state.log.join(' · ');
+ const history=$('uno-log');history.replaceChildren(...state.log.map((entry,i)=>make('p',(i+1)+'. '+entry)));
 });
 })();
