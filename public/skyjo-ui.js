@@ -12,14 +12,14 @@ function card(v,onclick,disabled=false){
  x.disabled=disabled;x.setAttribute('aria-label',v===null?'Verdeckte Karte':'Karte '+v);return x;
 }
 function updateRoom(r){
- room=r;const selected=r.selectedGame||'uno',active=r.activeGame;
+ room=r;if(!r.gameStarted)lastState=null;const selected=r.selectedGame||'uno',active=r.activeGame;
  $('game-picker').classList.toggle('hidden',r.gameStarted);
  $('game-choice').value=selected;$('game-choice').disabled=r.host!==identity?.id;
  $('skyjo-setup').classList.toggle('hidden',r.gameStarted||selected!=='skyjo');
  $('start-skyjo').classList.toggle('hidden',r.host!==identity?.id);
  $('skyjo-play').classList.toggle('hidden',active!=='skyjo');
  $('game-switch').classList.toggle('hidden',!r.gameStarted||r.host!==identity?.id);
- $('game-switch').disabled=!lastState?.finished;
+ $('game-switch').disabled=!!r.gameStarted&&!lastState?.finished;
 }
 $('game-choice').onchange=()=>send('room:select-game',$('game-choice').value);
 $('start-skyjo').onclick=()=>send('game:start',{});
@@ -28,8 +28,9 @@ $('game-switch').onclick=()=>send('room:finish-game',{});
 $('skyjo-log-toggle').onclick=()=>{const x=$('skyjo-log');x.classList.toggle('hidden');$('skyjo-log-toggle').textContent=x.classList.contains('hidden')?'Spielverlauf anzeigen':'Spielverlauf ausblenden';};
 socket.on('room',updateRoom);
 socket.on('game:state',g=>{
- if(g.game!=='skyjo')return;
  lastState=g;
+ $('game-switch').disabled=!g.finished;
+ if(g.game!=='skyjo')return;
  const mine=g.turn===identity?.id;
  const phase=g.phase;
  $('skyjo-turn').textContent=g.finished?'🏁 Runde beendet':phase==='reveal'?'Decke zwei Karten auf ('+g.revealed+'/2)':mine?'🎯 Du bist am Zug!':'Am Zug: '+who(g.turn);
