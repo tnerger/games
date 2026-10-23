@@ -74,6 +74,6 @@ socket.on('game:state',g=>{
  $('skyjo-restart').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
  if(g.matchFinished)$('skyjo-turn').textContent='🏆 Spiel beendet! '+who(g.players.reduce((a,b)=>g.scores[a]<=g.scores[b]?a:b))+' gewinnt mit den wenigsten Punkten.';
  $('game-switch').disabled=!g.finished;
- const log=$('skyjo-log');log.replaceChildren(...g.events.slice().reverse().map(e=>el('p',new Date(e.at).toLocaleTimeString('de-DE')+' · '+(e.actor?who(e.actor)+': ':'')+e.text)));
+ const log=$('skyjo-log');log.replaceChildren(...g.events.slice(-60).reverse().map(e=>el('p',new Date(e.at).toLocaleTimeString('de-DE')+' · '+(e.actor?who(e.actor)+': ':'')+e.text)));
 });
 })();
