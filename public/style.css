@@ -130,3 +130,8 @@
 @keyframes wizard-card-flight{from{opacity:0;transform:translate(80px,-115px) rotate(17deg) scale(.65)}to{opacity:1;transform:translate(0,0) rotate(0) scale(1)}}
 @keyframes wizard-winner-pop{from{opacity:.25;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.wizard-arriving,.wizard-trick-win{animation:none!important}}
+
+/* Wizard personal trick progress and next-round action by the hand */
+#wizard-my-tricks{margin:16px 0 10px;padding:12px 14px;border-radius:12px;background:#1a3550;border:1px solid #6385a2;color:#fff1c4;font-weight:750;line-height:1.5;text-align:center}
+#wizard-next{margin:10px 0 22px;background:#f3c66d;color:#242039}
+#wizard-hand:empty{display:none}
