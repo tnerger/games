@@ -97,7 +97,7 @@ function scheduleBot(r){
  if(!r.game||r.game.finished)return;
  const id=r.gameType==='skyjo'&&r.game.phase==='reveal'?r.game.players.find(pid=>r.players.get(pid)?.bot&&(r.game.revealed[pid]||0)<2):r.game.players[r.game.turn];const player=r.players.get(id);
  if(!player?.bot||botTimers.has(r.code))return;
- const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||(r.gameType==='skyjo'&&r.game.phase==='reveal'?(r.game.revealed[id]||0)>=2:r.game.players[r.game.turn]!==id))return;try{const action=gameRegistry.get(r.gameType).bot(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},2400);
+ const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||(r.gameType==='skyjo'&&r.game.phase==='reveal'?(r.game.revealed[id]||0)>=2:r.game.players[r.game.turn]!==id))return;try{const action=gameRegistry.get(r.gameType).bot(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},r.gameType==='skyjo'&&['replace','flip'].includes(r.game.phase)?650:2400);
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
@@ -142,7 +142,7 @@ io.on('connection', socket => {
     socket.data.player = identity.id;
     save();
     publish(r);
-    if(r.game) socket.emit('game:state',uno.view(r.game,identity.id));
+    if(r.game) socket.emit('game:state',gameRegistry.get(r.gameType||'uno').view(r.game,identity.id));
     respond(ack, { ok: true, room: publicRoom(r) });
   }
   socket.on('create', (identity, ack) => {
