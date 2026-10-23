@@ -38,7 +38,7 @@ function draw(g,id,n){let count=0;for(let i=0;i<n;i++){if(!g.deck.length){const 
 function canPlay(g,c){if(g.pending)return g.rules.stacking&&g.pendingType==='draw2'&&c.value==='draw2';return c.color==='wild'||c.color===g.color||c.value===g.discard.at(-1).value;}
 function view(g,id){
  const p=g.players[g.turn];
- return {players:g.players.map(pid=>({id:pid,count:g.hands[pid].length})),hand:g.hands[id]||[],top:g.discard.at(-1),color:g.color,turn:p,direction:g.direction,pending:g.pending,awaitingColor:g.awaitingColor,awaitingSwap:g.awaitingSwap,awaitingChallenge:g.awaitingChallenge,finished:g.finished,winner:g.winner,rules:g.rules,descriptions,log:g.log,revision:g.revision,canPlay:(g.hands[id]||[]).filter(c=>id===p&&!g.awaitingColor&&!g.awaitingSwap&&!g.awaitingChallenge&&canPlay(g,c)).map(c=>c.id)};
+ return {players:g.players.map(pid=>({id:pid,count:g.hands[pid].length})),hand:g.hands[id]||[],top:g.discard.at(-1),color:g.color,turn:p,direction:g.direction,pending:g.pending,awaitingColor:g.awaitingColor,awaitingSwap:g.awaitingSwap,awaitingChallenge:g.awaitingChallenge,finished:g.finished,winner:g.winner,rules:g.rules,descriptions,log:g.log,events:g.events||[],revision:g.revision,canPlay:(g.hands[id]||[]).filter(c=>id===p&&!g.awaitingColor&&!g.awaitingSwap&&!g.awaitingChallenge&&canPlay(g,c)).map(c=>c.id)};
 }
 function act(g,id,a){
  g.revision++;
