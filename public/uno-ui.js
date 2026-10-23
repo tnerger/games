@@ -1,25 +1,32 @@
 'use strict';
 (() => {
 const $=id=>document.getElementById(id);
-const labels={stacking:'+2 stapeln',sevenZero:'7–0-Regel',drawUntilPlayable:'Ziehen bis spielbar',challenge:'+4 anzweifeln',actionFinish:'Mit Aktionskarte beenden'};
+const labels={stacking:'+2 stapeln',sevenZero:'7–0-Regel',drawUntilPlayable:'Ziehen bis spielbar',challenge:'+4 anzweifeln',actionFinish:'Mit Aktionskarte beenden',penaltySkip:'Nach +2 / +4 aussetzen'};
 const help={
  stacking:'Eine +2 kann mit einer weiteren +2 beantwortet werden. Die Strafkarten addieren sich. +4 kann nicht auf +2 gelegt werden.',
  sevenZero:'7: Du tauschst deine Hand mit einem anderen Spieler. 0: Alle geben ihre Hand in Spielrichtung weiter.',
  drawUntilPlayable:'Wenn du keine passende Karte hast, ziehst du bis eine spielbare Karte erscheint oder der Stapel leer ist.',
  challenge:'Eine +4 ist nur erlaubt, wenn der Ausspieler keine Karte der aktuellen Farbe hat. Bei erfolgreicher Anzweiflung zieht er vier Karten, sonst ziehst du sechs.',
- actionFinish:'Du darfst mit einer Aktionskarte gewinnen. Die Kartenwirkung wird noch ausgeführt, bevor die Runde endet.'
+ actionFinish:'Du darfst mit einer Aktionskarte gewinnen. Die Kartenwirkung wird noch ausgeführt, bevor die Runde endet.',
+ penaltySkip:'Aktiviert: Wer +2 oder +4 kassiert, zieht Karten und setzt aus. Deaktiviert: Nach dem Ziehen darf diese Person sofort ihren Zug machen.'
 };
 const names={red:'Rot',yellow:'Gelb',green:'Grün',blue:'Blau',wild:'Schwarz'};
 const symbols={skip:'⦸',reverse:'⇄',draw2:'+2',wild:'🌈',wild4:'+4'};
 let current=null;
 let roomInfo=null;
 let lastRevision=-1;
+let previousCounts={};
 function send(type,payload){emit(type,payload,r=>{if(r?.ok)status('');});}
 function make(tag,txt,cls){const e=document.createElement(tag);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e;}
 function button(txt,fn,cls){const b=make('button',txt,cls||'secondary');b.onclick=fn;return b;}
 function ruleOptions(room){
  roomInfo=room;
  showScores();
+ const isHost=room.host===identity?.id;
+ $('bot-setup').classList.toggle('hidden',!isHost||room.gameStarted);
+ const bots=$('bot-list');bots.replaceChildren();
+ for(const p of room.players.filter(p=>p.bot)){const line=make('div',undefined,'bot-entry');line.append(make('span',p.name));if(isHost)line.append(button('Entfernen',()=>send('bot:remove',p.id),'secondary'));bots.append(line);}
+ $('bot-add').disabled=room.players.length>=6;
  const el=$('uno-options');el.replaceChildren();
  const rules=room.gameRules||{};
  for(const [key,title] of Object.entries(labels)){
@@ -40,6 +47,7 @@ $('save-rules').onclick=()=>{
  send('game:configure',opts);
 };
 $('start-uno').onclick=()=>send('game:start',{});
+$('bot-add').onclick=()=>send('bot:add',$('bot-level').value);
 function card(c,playable){
  const b=make('button',symbols[c.value]||c.value,'uno-card '+c.color);
  b.disabled=!playable;
@@ -70,6 +78,9 @@ $('uno-toggle-log').onclick=()=>{const log=$('uno-log');const open=log.classList
 function showScores(){if(!roomInfo)return;const target=$('uno-scoreboard');target.replaceChildren(make('h3','Punktetafel'));const table=make('table');const header=make('tr');for(const x of ['Spieler','Siege','Punkte'])header.append(make('th',x));table.append(header);for(const p of roomInfo.players){const row=make('tr');const score=roomInfo.scores?.[p.id]||{wins:0,points:0};for(const v of [p.name,score.wins,score.points])row.append(make('td',String(v)));table.append(row);}target.append(table);}
 
 socket.on('game:state',state=>{
+ const changed=state.players.filter(p=>previousCounts[p.id]!==undefined&&p.count>previousCounts[p.id]);
+ previousCounts=Object.fromEntries(state.players.map(p=>[p.id,p.count]));
+ if(changed.length&&current?.revision!==state.revision){const stage=$('uno-draw-animation');stage.replaceChildren();const count=changed.reduce((sum,p)=>sum+p.count-(current?.players.find(old=>old.id===p.id)?.count||p.count),0);for(let i=0;i<Math.min(5,Math.max(1,count));i++)stage.append(make('span','🂠','flying-card'));stage.classList.remove('drawing');void stage.offsetWidth;stage.classList.add('drawing');}
  current=state;
  $('uno-setup').classList.add('hidden');$('uno-play').classList.remove('hidden');
  const mine=state.turn===identity?.id;
