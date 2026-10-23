@@ -20,14 +20,14 @@ function save() {
   fs.mkdirSync(dataDir, { recursive: true });
   const tmp = dataFile + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify([...rooms.values()].map(r => ({
-    code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name }))
+    code: r.code, host: r.host, scores:r.scores||{}, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name }))
   }))));
   fs.renameSync(tmp, dataFile);
 }
 try {
   for (const r of JSON.parse(fs.readFileSync(dataFile, 'utf8'))) {
     if (!/^[A-F0-9]{6}$/.test(r.code) || !Array.isArray(r.players)) continue;
-    rooms.set(r.code, { code: r.code, host: r.host, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: false }])) });
+    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: false }])) });
   }
 } catch (err) { if (err.code !== 'ENOENT') console.error('Spielstände konnten nicht geladen werden:', err.message); }
 app.use(express.static(path.join(__dirname, 'public')));
@@ -86,7 +86,7 @@ app.post('/api/admin/update', adminAuth, express.json({ limit: '1kb' }), async (
   } catch (err) { updating = false; res.status(500).json({ error: 'Update fehlgeschlagen: ' + err.message }); }
 });
 
-const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online })), gameStarted:!!r.game, gameRules:r.options||uno.defaults });
+const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{} });
 function publishGame(r) { if(!r.game)return;for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',uno.view(r.game,socket.data.player));} }
 
 function publish(r) { io.to(r.code).emit('room', publicRoom(r)); }
@@ -126,7 +126,7 @@ io.on('connection', socket => {
     if (!validId(identity?.id) || !validName(identity?.name)) return respond(ack, { error: 'Bitte einen Namen eingeben.' });
     let c;
     do { c = code(); } while (rooms.has(c));
-    const r = { code: c, host: identity.id, players: new Map() };
+    const r = { code: c, host: identity.id, scores:{}, players: new Map() };
     rooms.set(c, r);
     joinRoom(r, identity, ack);
   });
@@ -153,9 +153,10 @@ io.on('connection', socket => {
   socket.on('game:action',(action,ack)=>{
     const r=rooms.get(socket.data.room);
     if(!r?.game)return respond(ack,{error:'Kein UNO-Spiel aktiv.'});
-    try{uno.act(r.game,socket.data.player,action);publishGame(r);respond(ack,{ok:true});}
+    try{const wasFinished=r.game.finished;uno.act(r.game,socket.data.player,action);if(!wasFinished&&r.game.finished){const winner=r.game.winner;const points=Object.entries(r.game.hands).filter(([id])=>id!==winner).flatMap(([,hand])=>hand).reduce((sum,c)=>sum+(c.value==='wild'||c.value==='wild4'?50:['skip','reverse','draw2'].includes(c.value)?20:Number(c.value)||0),0);const score=r.scores[winner]||{wins:0,points:0};r.scores[winner]={wins:score.wins+1,points:score.points+points};save();publish(r);}publishGame(r);respond(ack,{ok:true});}
     catch(err){respond(ack,{error:err.message});}
   });
+  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});r.game=uno.create([...r.players.keys()],r.game.rules);publish(r);publishGame(r);respond(ack,{ok:true});});
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
 });
