@@ -45,6 +45,9 @@
   if(mine&&g.phase==='choose-trump'){actions.append(node('p','Wähle die Trumpffarbe:'));for(const [s,label] of Object.entries(suits))actions.append(button(label,()=>send('game:action',{type:'trump',suit:s}),'wizard-choice '+s));}
   if(mine&&g.phase==='bidding'){actions.append(node('p','Deine Stichansage:'));const bids=node('div',undefined,'wizard-bids');for(let n=0;n<=g.round;n++)bids.append(button(String(n),()=>send('game:action',{type:'bid',count:n})));actions.append(bids);}
   if(last)actions.append(node('p',last.text,'wizard-last'));
+  const me=g.players.find(p=>p.id===identity?.id);
+  const personal=$('wizard-my-tricks');
+  personal.textContent=me?(me.bid===null?'🎯 Deine Ansage: noch offen · Gewonnene Stiche: '+me.tricks:'🎯 Angesagt: '+me.bid+' · Gewonnen: '+me.tricks+' · Noch benötigt: '+Math.max(0,me.bid-me.tricks)):'';
   const hand=$('wizard-hand');hand.replaceChildren();for(const c of g.hand)hand.append(card(c,mine&&g.phase==='playing'&&g.legal.includes(c.id),x=>send('game:action',{type:'play',cardId:x.id})));
   const scores=$('wizard-scoreboard');scores.replaceChildren(node('h3','Stiche & Punktestand'));
   const t=node('table');const th=node('tr');for(const x of ['Spieler','Ansage','Stiche','Gesamt'])th.append(node('th',x));t.append(th);
