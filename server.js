@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const uno = require('./uno');
 const bots = require('./bots');
 const skyjo = require('./skyjo');
+const gameRegistry=require('./game-registry');
 const fs = require('node:fs');
 const path = require('node:path');
 const app = express();
@@ -89,20 +90,20 @@ app.post('/api/admin/update', adminAuth, express.json({ limit: '1kb' }), async (
 });
 
 const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online, bot:p.bot||null })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{},skyjoScores:r.skyjoScores||{},selectedGame:r.selectedGame||'uno',activeGame:r.gameType||null });
-function publishGame(r) { if(!r.game)return;const engine=r.gameType==='skyjo'?skyjo:uno;for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',engine.view(r.game,socket.data.player));} }
+function publishGame(r) { if(!r.game)return;const engine=gameRegistry.get(r.gameType||'uno');for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',engine.view(r.game,socket.data.player));} }
 
 const botTimers=new Map();
 function scheduleBot(r){
  if(!r.game||r.game.finished)return;
  const id=r.gameType==='skyjo'&&r.game.phase==='reveal'?r.game.players.find(pid=>r.players.get(pid)?.bot&&(r.game.revealed[pid]||0)<2):r.game.players[r.game.turn];const player=r.players.get(id);
  if(!player?.bot||botTimers.has(r.code))return;
- const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||(r.gameType==='skyjo'&&r.game.phase==='reveal'?(r.game.revealed[id]||0)>=2:r.game.players[r.game.turn]!==id))return;try{const action=r.gameType==='skyjo'?skyjo.botAction(r.game,id,player.bot):bots.decide(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},2400);
+ const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||(r.gameType==='skyjo'&&r.game.phase==='reveal'?(r.game.revealed[id]||0)>=2:r.game.players[r.game.turn]!==id))return;try{const action=gameRegistry.get(r.gameType).bot(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},2400);
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
  const wasFinished=r.game.finished;
  const before=r.gameType==='uno'?r.game.log.length:0;
- if(r.gameType==='skyjo')skyjo.act(r.game,id,action);else uno.act(r.game,id,action);
+ gameRegistry.get(r.gameType).act(r.game,id,action);
  const entries=r.gameType==='uno'?r.game.log.slice(before):[];
  if(!r.game.events)r.game.events=[{id:0,at:Date.now(),actor:null,text:'Die Runde wurde gestartet.'}];
  for(const entry of entries){r.game.events.push({id:r.game.events.length,at:Date.now(),actor:id,text:entry});}
@@ -172,7 +173,7 @@ io.on('connection', socket => {
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spiel kann nicht gestartet werden.'});
     if(r.players.size<2)return respond(ack,{error:'Mindestens zwei Spieler benötigt.'});
     if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});
-    r.gameType=r.selectedGame||'uno';r.game=r.gameType==='skyjo'?skyjo.create([...r.players.keys()],r.skyjoScores):uno.create([...r.players.keys()],r.options||uno.defaults);
+    r.gameType=r.selectedGame||'uno';r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);
     publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});
   });
   socket.on('game:action',(action,ack)=>{
@@ -181,7 +182,7 @@ io.on('connection', socket => {
     try{performAction(r,socket.data.player,action);respond(ack,{ok:true});}
     catch(err){respond(ack,{error:err.message});}
   });
-  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});r.game=r.gameType==='skyjo'?skyjo.create([...r.players.keys()],r.skyjoScores):uno.create([...r.players.keys()],r.game.rules);publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
+  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
   socket.on('room:finish-game',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Spielwechsel erst nach Rundenende möglich.'});const timer=botTimers.get(r.code);if(timer)clearTimeout(timer);botTimers.delete(r.code);r.game=null;r.gameType=null;save();publish(r);respond(ack,{ok:true});});
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
