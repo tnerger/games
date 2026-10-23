@@ -44,7 +44,7 @@ socket.on('game:state',g=>{
  const deckButton=btn('🂠',()=>send('game:action',{type:'take',source:'deck'}),'skyjo-pile skyjo-deck');deckButton.disabled=!choosing;
  deck.append(deckButton,el('span','Ziehstapel','skyjo-pile-label'));
  const discard=el('div',undefined,'skyjo-stack'+(taking?' skyjo-muted':''));
- const discardButton=card(g.discard,()=>send('game:action',{type:'take',source:'discard'}),!choosing);discardButton.classList.add('skyjo-pile');
+ const discardButton=card(g.discard??null,()=>send('game:action',{type:'take',source:'discard'}),!choosing||g.discard==null);discardButton.classList.add('skyjo-pile');
  discard.append(discardButton,el('span','Ablagestapel','skyjo-pile-label'));
  piles.append(deck,discard);
  if(taking){
