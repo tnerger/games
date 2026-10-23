@@ -94,9 +94,9 @@ function publishGame(r) { if(!r.game)return;const engine=r.gameType==='skyjo'?sk
 const botTimers=new Map();
 function scheduleBot(r){
  if(!r.game||r.game.finished)return;
- const id=r.game.players[r.game.turn];const player=r.players.get(id);
+ const id=r.gameType==='skyjo'&&r.game.phase==='reveal'?r.game.players.find(pid=>r.players.get(pid)?.bot&&(r.game.revealed[pid]||0)<2):r.game.players[r.game.turn];const player=r.players.get(id);
  if(!player?.bot||botTimers.has(r.code))return;
- const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||r.game.players[r.game.turn]!==id)return;try{const action=r.gameType==='skyjo'?skyjo.botAction(r.game,id,player.bot):bots.decide(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},2400);
+ const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||(r.gameType==='skyjo'&&r.game.phase==='reveal'?(r.game.revealed[id]||0)>=2:r.game.players[r.game.turn]!==id))return;try{const action=r.gameType==='skyjo'?skyjo.botAction(r.game,id,player.bot):bots.decide(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},2400);
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
