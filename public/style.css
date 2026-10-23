@@ -80,3 +80,11 @@
 .skyjo-winner-row{background:#41604766;font-weight:800}#skyjo-result-penalty{background:#161e3b;padding:12px;border-radius:12px;text-align:left}
 @keyframes skyjo-result-in{from{opacity:0;transform:translateY(22px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.skyjo-result-dialog{animation:none}}
+
+/* Skyjo: drawn card overlays the two stationary piles; larger discard action */
+#skyjo-piles{position:relative;min-height:155px;flex-wrap:nowrap;gap:24px;overflow:visible}
+#skyjo-piles .skyjo-stack{flex:0 0 105px}
+#skyjo-piles .skyjo-taken{position:absolute;z-index:5;left:50%;top:0;transform:translateX(-50%);width:110px;flex:none;animation:none;filter:drop-shadow(0 5px 12px #0009)}
+#skyjo-piles .skyjo-taken .skyjo-card{box-shadow:0 6px 24px #000c;border-color:#fff}
+#skyjo-piles .skyjo-discard-icon{top:26px;right:-35px;width:64px;height:64px;min-height:64px;padding:0;margin:0;border:3px solid #fff;border-radius:50%;font-size:2.1rem;box-shadow:0 5px 16px #000b;z-index:7;touch-action:manipulation}
+@media(max-width:380px){#skyjo-piles{gap:12px}#skyjo-piles .skyjo-stack{flex-basis:96px}#skyjo-piles .skyjo-discard-icon{right:-30px;width:58px;height:58px;min-height:58px}}
