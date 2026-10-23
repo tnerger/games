@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const crypto = require('node:crypto');
 const uno = require('./uno');
+const bots = require('./bots');
 const fs = require('node:fs');
 const path = require('node:path');
 const app = express();
@@ -20,14 +21,14 @@ function save() {
   fs.mkdirSync(dataDir, { recursive: true });
   const tmp = dataFile + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify([...rooms.values()].map(r => ({
-    code: r.code, host: r.host, scores:r.scores||{}, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name }))
+    code: r.code, host: r.host, scores:r.scores||{}, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
   }))));
   fs.renameSync(tmp, dataFile);
 }
 try {
   for (const r of JSON.parse(fs.readFileSync(dataFile, 'utf8'))) {
     if (!/^[A-F0-9]{6}$/.test(r.code) || !Array.isArray(r.players)) continue;
-    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: false }])) });
+    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
   }
 } catch (err) { if (err.code !== 'ENOENT') console.error('Spielstände konnten nicht geladen werden:', err.message); }
 app.use(express.static(path.join(__dirname, 'public')));
@@ -86,9 +87,23 @@ app.post('/api/admin/update', adminAuth, express.json({ limit: '1kb' }), async (
   } catch (err) { updating = false; res.status(500).json({ error: 'Update fehlgeschlagen: ' + err.message }); }
 });
 
-const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{} });
+const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online, bot:p.bot||null })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{} });
 function publishGame(r) { if(!r.game)return;for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',uno.view(r.game,socket.data.player));} }
 
+const botTimers=new Map();
+function scheduleBot(r){
+ if(!r.game||r.game.finished)return;
+ const id=r.game.players[r.game.turn];const player=r.players.get(id);
+ if(!player?.bot||botTimers.has(r.code))return;
+ const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||r.game.players[r.game.turn]!==id)return;try{const action=bots.decide(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},850);
+ botTimers.set(r.code,timer);
+}
+function performAction(r,id,action){
+ const wasFinished=r.game.finished;
+ uno.act(r.game,id,action);
+ if(!wasFinished&&r.game.finished){const winner=r.game.winner;const points=Object.entries(r.game.hands).filter(([pid])=>pid!==winner).flatMap(([,hand])=>hand).reduce((sum,c)=>sum+(c.value==='wild'||c.value==='wild4'?50:['skip','reverse','draw2'].includes(c.value)?20:Number(c.value)||0),0);const score=r.scores[winner]||{wins:0,points:0};r.scores[winner]={wins:score.wins+1,points:score.points+points};save();publish(r);}
+ publishGame(r);scheduleBot(r);
+}
 function publish(r) { io.to(r.code).emit('room', publicRoom(r)); }
 function respond(ack, data) { if (typeof ack === 'function') ack(data); }
 io.on('connection', socket => {
@@ -110,6 +125,7 @@ io.on('connection', socket => {
   function joinRoom(r, identity, ack) {
     if (!validId(identity?.id) || !validName(identity?.name)) return respond(ack, { error: 'Ungültiger Name oder Spielerkennung.' });
     const old = r.players.get(identity.id);
+    if (old?.bot) return respond(ack,{error:'Dieser Platz gehört einem Bot.'});
     if (!old && r.players.size >= 6) return respond(ack, { error: 'Dieser Raum ist voll.' });
     if (socket.data.room) leave();
     if (!old) r.players.set(identity.id, { id: identity.id, name: identity.name.trim(), online: true });
@@ -135,6 +151,8 @@ io.on('connection', socket => {
     if (!r) return respond(ack, { error: 'Raum nicht gefunden.' });
     joinRoom(r, identity, ack);
   });
+  socket.on('bot:add',(difficulty,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Bots können nur vor dem Spiel vom Raumleiter hinzugefügt werden.'});if(!['easy','normal','hard'].includes(difficulty))return respond(ack,{error:'Unbekannte Schwierigkeit.'});if(r.players.size>=6)return respond(ack,{error:'Maximal sechs Spieler.'});const id=crypto.randomBytes(16).toString('hex');const names={easy:'Leicht',normal:'Normal',hard:'Schwer'};const n=[...r.players.values()].filter(p=>p.bot).length+1;r.players.set(id,{id,name:'Bot '+n+' ('+names[difficulty]+')',bot:difficulty,online:true});save();publish(r);respond(ack,{ok:true});});
+  socket.on('bot:remove',(id,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game||!r.players.get(id)?.bot)return respond(ack,{error:'Bot kann nicht entfernt werden.'});r.players.delete(id);save();publish(r);respond(ack,{ok:true});});
   socket.on('game:configure', (options, ack) => {
     const r=rooms.get(socket.data.room);
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Nur der Raumleiter kann vor dem Start Regeln ändern.'});
@@ -148,15 +166,15 @@ io.on('connection', socket => {
     if(r.players.size<2)return respond(ack,{error:'Mindestens zwei Spieler benötigt.'});
     if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});
     r.game=uno.create([...r.players.keys()],r.options||uno.defaults);
-    publish(r);publishGame(r);respond(ack,{ok:true});
+    publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});
   });
   socket.on('game:action',(action,ack)=>{
     const r=rooms.get(socket.data.room);
     if(!r?.game)return respond(ack,{error:'Kein UNO-Spiel aktiv.'});
-    try{const wasFinished=r.game.finished;uno.act(r.game,socket.data.player,action);if(!wasFinished&&r.game.finished){const winner=r.game.winner;const points=Object.entries(r.game.hands).filter(([id])=>id!==winner).flatMap(([,hand])=>hand).reduce((sum,c)=>sum+(c.value==='wild'||c.value==='wild4'?50:['skip','reverse','draw2'].includes(c.value)?20:Number(c.value)||0),0);const score=r.scores[winner]||{wins:0,points:0};r.scores[winner]={wins:score.wins+1,points:score.points+points};save();publish(r);}publishGame(r);respond(ack,{ok:true});}
+    try{performAction(r,socket.data.player,action);respond(ack,{ok:true});}
     catch(err){respond(ack,{error:err.message});}
   });
-  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});r.game=uno.create([...r.players.keys()],r.game.rules);publish(r);publishGame(r);respond(ack,{ok:true});});
+  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});r.game=uno.create([...r.players.keys()],r.game.rules);publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
 });
