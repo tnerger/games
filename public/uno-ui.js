@@ -111,7 +111,6 @@ socket.on('game:state',state=>{
  $('uno-notice').textContent=describe(newest);
  if(newest&&newest.id!==lastEventId){const area=$('uno-last-move');const next=make('div',describe(newest),'move-in');if(area.firstChild){area.firstChild.className='move-out';area.append(next);setTimeout(()=>{if(area.contains(next))area.replaceChildren(next);next.className='';},550);}else area.replaceChildren(next);lastEventId=newest.id;}
  const colorText={red:'ROT',yellow:'GELB',green:'GRÜN',blue:'BLAU'};
- const banner=$('uno-color-banner');banner.className='hidden';
  $('uno-restart').classList.toggle('hidden',!state.finished||roomInfo?.host!==identity.id);
  showScores();
  const top=$('uno-top');top.replaceChildren(card(state.top,false));
