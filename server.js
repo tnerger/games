@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const crypto = require('node:crypto');
+const uno = require('./uno');
 const fs = require('node:fs');
 const path = require('node:path');
 const app = express();
@@ -85,7 +86,9 @@ app.post('/api/admin/update', adminAuth, express.json({ limit: '1kb' }), async (
   } catch (err) { updating = false; res.status(500).json({ error: 'Update fehlgeschlagen: ' + err.message }); }
 });
 
-const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online })) });
+const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online })), gameStarted:!!r.game, gameRules:r.options||uno.defaults });
+function publishGame(r) { if(!r.game)return;for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',uno.view(r.game,socket.data.player));} }
+
 function publish(r) { io.to(r.code).emit('room', publicRoom(r)); }
 function respond(ack, data) { if (typeof ack === 'function') ack(data); }
 io.on('connection', socket => {
@@ -116,6 +119,7 @@ io.on('connection', socket => {
     socket.data.player = identity.id;
     save();
     publish(r);
+    if(r.game) socket.emit('game:state',uno.view(r.game,identity.id));
     respond(ack, { ok: true, room: publicRoom(r) });
   }
   socket.on('create', (identity, ack) => {
@@ -130,6 +134,27 @@ io.on('connection', socket => {
     const r = rooms.get(String(c || '').toUpperCase());
     if (!r) return respond(ack, { error: 'Raum nicht gefunden.' });
     joinRoom(r, identity, ack);
+  });
+  socket.on('game:configure', (options, ack) => {
+    const r=rooms.get(socket.data.room);
+    if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Nur der Raumleiter kann vor dem Start Regeln ändern.'});
+    if(!options||typeof options!=='object')return respond(ack,{error:'Ungültige Regeln.'});
+    r.options=Object.fromEntries(Object.keys(uno.defaults).map(k=>[k,options[k]===true]));
+    publish(r);respond(ack,{ok:true});
+  });
+  socket.on('game:start', (_,ack)=>{
+    const r=rooms.get(socket.data.room);
+    if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spiel kann nicht gestartet werden.'});
+    if(r.players.size<2)return respond(ack,{error:'Mindestens zwei Spieler benötigt.'});
+    if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});
+    r.game=uno.create([...r.players.keys()],r.options||uno.defaults);
+    publish(r);publishGame(r);respond(ack,{ok:true});
+  });
+  socket.on('game:action',(action,ack)=>{
+    const r=rooms.get(socket.data.room);
+    if(!r?.game)return respond(ack,{error:'Kein UNO-Spiel aktiv.'});
+    try{uno.act(r.game,socket.data.player,action);publishGame(r);respond(ack,{ok:true});}
+    catch(err){respond(ack,{error:err.message});}
   });
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
