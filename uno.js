@@ -26,7 +26,7 @@ function create(players,opts){
  for(const id of players) hands[id]=Array.from({length:7},()=>deck.pop());
  let top=deck.pop();
  while(top.value==='wild4'){deck.unshift(top);shuffle(deck);top=deck.pop();}
- const game={players:[...players],hands,deck,discard:[top],turn:0,direction:1,color:top.color==='wild'?colors[crypto.randomInt(4)]:top.color,rules:{...defaults,...opts},pending:0,pendingType:null,awaitingColor:false,awaitingSwap:false,awaitingChallenge:false,wild4Illegal:false,wild4Player:null,finished:false,winner:null,log:['UNO wurde gestartet.'],revision:0};
+ const game={players:[...players],hands,deck,discard:[top],turn:0,direction:1,color:top.color==='wild'?colors[crypto.randomInt(4)]:top.color,rules:{...defaults,...opts},pending:0,pendingType:null,awaitingColor:false,awaitingSwap:false,awaitingChallenge:false,wild4Illegal:false,wild4Player:null,finished:false,winner:null,finishAfterPenalty:null,log:['UNO wurde gestartet.'],revision:0};
  if(top.value==='skip')game.turn=1%players.length;
  if(top.value==='reverse'){game.direction=-1;game.turn=players.length===2?0:players.length-1;}
  if(top.value==='draw2'){const target=game.players[game.turn];draw(game,target,2);game.turn=next(game,game.turn);}
@@ -50,7 +50,11 @@ function act(g,id,a){
   const count=a.type==='challenge'?(g.wild4Illegal?0:6):4;
   if(a.type==='challenge'&&g.wild4Illegal)draw(g,g.wild4Player,4);else draw(g,id,count);
   g.log.push(a.type==='challenge'?(g.wild4Illegal?'Anzweiflung erfolgreich!':'Anzweiflung fehlgeschlagen!'):'Vier Karten gezogen.');
-  g.awaitingChallenge=false;g.pending=0;g.pendingType=null;g.turn=next(g);g.wild4Player=null;return;
+  const successful=a.type==='challenge'&&g.wild4Illegal;
+  g.awaitingChallenge=false;g.pending=0;g.pendingType=null;g.wild4Player=null;
+  if(g.finishAfterPenalty){g.finished=true;g.winner=g.finishAfterPenalty;g.finishAfterPenalty=null;g.log.push('Spiel beendet!');return;}
+  if(!successful && g.rules.penaltySkip)g.turn=next(g);
+  return;
  }
  if(g.awaitingColor){
   if(a.type!=='color'||!colors.includes(a.color))throw Error('Wähle eine Farbe.');
@@ -63,7 +67,9 @@ function act(g,id,a){
  }
  if(a.type==='draw'){
   if(g.pending){
-   draw(g,id,g.pending);g.log.push('Strafkarten gezogen: '+g.pending);g.pending=0;g.pendingType=null;if(g.rules.penaltySkip)g.turn=next(g);return;
+   draw(g,id,g.pending);g.log.push('Strafkarten gezogen: '+g.pending+(g.rules.penaltySkip?' – Zug ausgesetzt.':' – Spieler bleibt am Zug.'));g.pending=0;g.pendingType=null;
+   if(g.finishAfterPenalty){g.finished=true;g.winner=g.finishAfterPenalty;g.finishAfterPenalty=null;g.log.push('Spiel beendet!');return;}
+   if(g.rules.penaltySkip)g.turn=next(g);return;
   }
   const n=draw(g,id,1);
   if(g.rules.drawUntilPlayable){
@@ -100,11 +106,13 @@ function act(g,id,a){
  if(c.value==='7'&&g.rules.sevenZero&&g.hands[id].length)g.awaitingSwap=true;
  if(c.value==='0'&&g.rules.sevenZero){const old={...g.hands};for(let i=0;i<g.players.length;i++)g.hands[g.players[next(g,i)]]=old[g.players[i]];}
  if(!g.hands[id].length){
-  g.finished=true;g.winner=id;g.log.push('Spiel beendet!');return;
+  if(c.value==='draw2'||c.value==='wild4'){g.finishAfterPenalty=id;}
+  else {g.finished=true;g.winner=id;g.log.push('Spiel beendet!');return;}
  }
  if(g.awaitingSwap)return;
  g.turn=next(g);
  if(c.value==='wild4'&&g.rules.challenge){g.awaitingChallenge=true;return;}
- if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.log.push('Strafkarten gezogen: '+g.pending+(g.rules.penaltySkip?' – Zug ausgesetzt.':' – Spieler ist am Zug.'));if(g.rules.penaltySkip)g.turn=next(g);g.pending=0;g.pendingType=null;}
+ if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.log.push('Strafkarten gezogen: '+g.pending+(g.rules.penaltySkip?' – Zug ausgesetzt.':' – Spieler bleibt am Zug.'));if(g.rules.penaltySkip)g.turn=next(g);g.pending=0;g.pendingType=null;}
+ if(g.finishAfterPenalty&&!g.pending&&!g.awaitingChallenge){g.finished=true;g.winner=g.finishAfterPenalty;g.finishAfterPenalty=null;g.log.push('Spiel beendet!');}
 }
 module.exports={create,view,act,defaults,descriptions};
