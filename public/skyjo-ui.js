@@ -18,6 +18,8 @@ function updateRoom(r){
  $('skyjo-setup').classList.toggle('hidden',r.gameStarted||selected!=='skyjo');
  $('start-skyjo').classList.toggle('hidden',r.host!==identity?.id);
  $('skyjo-play').classList.toggle('hidden',active!=='skyjo');
+ $('uno-play').classList.toggle('hidden',active!=='uno');
+ $('uno-setup').classList.toggle('hidden',r.gameStarted||selected!=='uno');
  $('game-switch').classList.toggle('hidden',!r.gameStarted||r.host!==identity?.id);
  $('game-switch').disabled=!!r.gameStarted&&!lastState?.finished;
 }
@@ -36,8 +38,21 @@ socket.on('game:state',g=>{
  $('skyjo-turn').textContent=g.finished?'🏁 Runde beendet':phase==='reveal'?'Decke zwei Karten auf ('+g.revealed+'/2)':mine?'🎯 Du bist am Zug!':'Am Zug: '+who(g.turn);
  $('skyjo-last').textContent=(g.events.at(-1)?.actor?who(g.events.at(-1).actor)+': ':'')+(g.events.at(-1)?.text||'');
  const piles=$('skyjo-piles');piles.replaceChildren();
- piles.append(btn('🂠 Ziehstapel',()=>send('game:action',{type:'take',source:'deck'}),'skyjo-pile'),btn('Ablage: '+g.discard,()=>send('game:action',{type:'take',source:'discard'}),'skyjo-pile'));
- for(const b of piles.children)b.disabled=!mine||phase!=='choose'||g.finished;
+ const choosing=mine&&phase==='choose'&&!g.finished;
+ const taking=mine&&phase==='replace';
+ const deck=el('div',undefined,'skyjo-stack'+(taking?' skyjo-muted':''));
+ const deckButton=btn('🂠',()=>send('game:action',{type:'take',source:'deck'}),'skyjo-pile skyjo-deck');deckButton.disabled=!choosing;
+ deck.append(deckButton,el('span','Ziehstapel','skyjo-pile-label'));
+ const discard=el('div',undefined,'skyjo-stack'+(taking?' skyjo-muted':''));
+ const discardButton=card(g.discard,()=>send('game:action',{type:'take',source:'discard'}),!choosing);discardButton.classList.add('skyjo-pile');
+ discard.append(discardButton,el('span','Ablagestapel','skyjo-pile-label'));
+ piles.append(deck,discard);
+ if(taking){
+  const taken=el('div',undefined,'skyjo-taken');
+  taken.append(card(g.held,()=>{},true),el('span','Gezogene Karte','skyjo-pile-label'));
+  if(g.source==='deck'){const drop=btn('↘',()=>send('game:action',{type:'discard'}),'skyjo-discard-icon');drop.title='Gezogene Karte abwerfen';drop.setAttribute('aria-label','Gezogene Karte abwerfen und eine verdeckte Karte aufdecken');taken.append(drop);}
+  piles.append(taken);
+ }
  const hand=$('skyjo-hand');hand.replaceChildren();
  g.hand.forEach((c,i)=>{if(!c){hand.append(el('div','—','skyjo-empty'));return;}
   const available=phase==='reveal'&&!c.open&&g.revealed<2||mine&&(phase==='replace'||phase==='flip'&&!c.open);
@@ -45,9 +60,15 @@ socket.on('game:state',g=>{
   hand.append(card(c.open?c.value:null,()=>send('game:action',{type:action,index:i}),!available));
  });
  const actions=$('skyjo-actions');actions.replaceChildren();
- if(mine&&phase==='replace'){actions.append(el('p','Gezogene Karte: '+g.held+' – Tippe auf eine deiner Karten, um sie auszutauschen.'));if(g.source==='deck')actions.append(btn('Karte abwerfen und eine verdeckte aufdecken',()=>send('game:action',{type:'discard'})));}
+ if(mine&&phase==='replace')actions.append(el('p','Tippe auf eine deiner Karten, um sie gegen die gezogene Karte auszutauschen.'));
  if(mine&&phase==='flip')actions.append(el('p','Tippe auf eine verdeckte Karte, um sie aufzudecken.'));
- const players=$('skyjo-players');players.replaceChildren(el('h3','Mitspieler'));for(const p of g.players)players.append(el('p',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten'));
+ const players=$('skyjo-players');players.replaceChildren(el('h3','Karten der Mitspieler'));
+ for(const p of g.players.filter(p=>p.id!==identity?.id)){
+  const details=el('details',undefined,'skyjo-opponent');const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');
+  const grid=el('div',undefined,'skyjo-opponent-grid');
+  for(const c of p.layout||[])grid.append(c?card(c.open?c.value:null,()=>{},true):el('div','—','skyjo-empty'));
+  details.append(summary,grid);players.append(details);
+ }
  const scores=$('skyjo-scores');scores.replaceChildren(el('h3','Punktetafel'));
  for(const p of g.players)scores.append(el('p',who(p.id)+': '+(g.scores[p.id]||0)+' Punkte'+(g.roundScores?' (Runde: '+g.roundScores[p.id]+')':'')));
  $('skyjo-restart').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
