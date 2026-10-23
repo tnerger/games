@@ -100,7 +100,11 @@ function scheduleBot(r){
 }
 function performAction(r,id,action){
  const wasFinished=r.game.finished;
+ const before=r.game.log.length;
  uno.act(r.game,id,action);
+ const entries=r.game.log.slice(before);
+ if(!r.game.events)r.game.events=[{id:0,at:Date.now(),actor:null,text:'Die Runde wurde gestartet.'}];
+ for(const entry of entries){r.game.events.push({id:r.game.events.length,at:Date.now(),actor:id,text:entry});}
  if(!wasFinished&&r.game.finished){const winner=r.game.winner;const points=Object.entries(r.game.hands).filter(([pid])=>pid!==winner).flatMap(([,hand])=>hand).reduce((sum,c)=>sum+(c.value==='wild'||c.value==='wild4'?50:['skip','reverse','draw2'].includes(c.value)?20:Number(c.value)||0),0);const score=r.scores[winner]||{wins:0,points:0};r.scores[winner]={wins:score.wins+1,points:score.points+points};save();publish(r);}
  publishGame(r);scheduleBot(r);
 }
@@ -151,7 +155,7 @@ io.on('connection', socket => {
     if (!r) return respond(ack, { error: 'Raum nicht gefunden.' });
     joinRoom(r, identity, ack);
   });
-  socket.on('bot:add',(difficulty,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Bots können nur vor dem Spiel vom Raumleiter hinzugefügt werden.'});if(!['easy','normal','hard'].includes(difficulty))return respond(ack,{error:'Unbekannte Schwierigkeit.'});if(r.players.size>=6)return respond(ack,{error:'Maximal sechs Spieler.'});const id=crypto.randomBytes(16).toString('hex');const names={easy:'Leicht',normal:'Normal',hard:'Schwer'};const n=[...r.players.values()].filter(p=>p.bot).length+1;r.players.set(id,{id,name:'Bot '+n+' ('+names[difficulty]+')',bot:difficulty,online:true});save();publish(r);respond(ack,{ok:true});});
+  socket.on('bot:add',(settings,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Bots können nur vor dem Spiel vom Raumleiter hinzugefügt werden.'});const difficulty=typeof settings==='string'?settings:settings?.difficulty;const requested=typeof settings==='object'?settings?.name:null;if(!['easy','normal','hard'].includes(difficulty))return respond(ack,{error:'Unbekannte Schwierigkeit.'});if(r.players.size>=6)return respond(ack,{error:'Maximal sechs Spieler.'});const id=crypto.randomBytes(16).toString('hex');const names={easy:'Leicht',normal:'Normal',hard:'Schwer'};const n=[...r.players.values()].filter(p=>p.bot).length+1;const name=typeof requested==='string'&&requested.trim()?requested.trim():'Bot '+n;if(!validName(name))return respond(ack,{error:'Der Bot-Name muss 1 bis 24 Zeichen lang sein.'});r.players.set(id,{id,name,bot:difficulty,online:true});save();publish(r);respond(ack,{ok:true});});
   socket.on('bot:remove',(id,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game||!r.players.get(id)?.bot)return respond(ack,{error:'Bot kann nicht entfernt werden.'});r.players.delete(id);save();publish(r);respond(ack,{ok:true});});
   socket.on('game:configure', (options, ack) => {
     const r=rooms.get(socket.data.room);
