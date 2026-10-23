@@ -95,6 +95,7 @@ socket.on('game:state',state=>{
  $('uno-turn').textContent=state.finished?'🏆 Gewonnen: '+playerName(state.winner):mine?'🎯 DU BIST AM ZUG!':'Am Zug: '+playerName(state.turn);
  $('uno-turn').classList.remove('turn-flash');if(state.revision!==lastRevision){void $('uno-turn').offsetWidth;$('uno-turn').classList.add('turn-flash');lastRevision=state.revision;}
  $('uno-notice').textContent=describe(newest);
+ if(newest&&newest.id!==lastEventId){const area=$('uno-last-move');const next=make('div',describe(newest),'move-in');if(area.firstChild){area.firstChild.className='move-out';area.append(next);setTimeout(()=>{if(area.contains(next))area.replaceChildren(next);next.className='';},550);}else area.replaceChildren(next);lastEventId=newest.id;}
  const colorText={red:'ROT',yellow:'GELB',green:'GRÜN',blue:'BLAU'};
  const banner=$('uno-color-banner');banner.textContent='AKTUELLE FARBE: '+colorText[state.color];banner.className='chosen-color '+state.color;
  $('uno-restart').classList.toggle('hidden',!state.finished||roomInfo?.host!==identity.id);
@@ -113,6 +114,6 @@ socket.on('game:state',state=>{
    actions.append(button(state.pending?'Strafe ziehen ('+state.pending+')':'Karte ziehen',()=>send('game:action',{type:'draw'})));
   }
  }
- const history=$('uno-log');history.replaceChildren(...state.log.map((entry,i)=>make('p',(i+1)+'. '+entry)));
+ const history=$('uno-log');history.replaceChildren(...events.slice().reverse().map(e=>{const p=make('p');const stamp=make('time',new Date(e.at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}),'log-time');p.append(stamp,document.createTextNode(' '+describe(e)));return p;}));
 });
 })();
