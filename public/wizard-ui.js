@@ -2,6 +2,9 @@
 (()=>{
  const $=id=>document.getElementById(id),send=(name,data)=>emit(name,data);
  let room=null,roundSeen=null;
+ let displayedTrickKey=null,latestState=null,playbackBusy=false;
+ const pendingStates=[];
+ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const suits={blue:'Eis',red:'Feuer',green:'Wald',yellow:'Sonne'};
  const name=id=>room?.players.find(p=>p.id===id)?.name||'Mitspieler';
  const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
@@ -26,7 +29,7 @@
  $('wizard-next').onclick=()=>send('game:restart',{});
  $('wizard-log-toggle').onclick=()=>{const l=$('wizard-log');const open=l.classList.toggle('hidden')===false;$('wizard-log-toggle').textContent=open?'Spielverlauf ausblenden':'Spielverlauf anzeigen';};
  socket.on('room',roomUpdate);
- socket.on('game:state',g=>{
+ async function renderState(g){
   if(g.game!=='wizard')return;
   $('uno-play').classList.add('hidden');$('skyjo-play').classList.add('hidden');$('wizard-play').classList.remove('hidden');
   const mine=g.turn===identity?.id;
@@ -54,5 +57,44 @@
   }
   $('wizard-next').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
   const log=$('wizard-log');log.replaceChildren(...g.events.slice().reverse().map(e=>node('p',new Date(e.at).toLocaleTimeString('de-DE')+' · '+(e.actor?name(e.actor)+': ':'')+e.text)));
+ }
+ function trickKey(g){return (room?.code||'')+':'+g.round+':'+(g.lastTrick?.number||0);}
+ async function showPlay(play,completed=false){
+  const table=$('wizard-table');const cell=node('div',undefined,'wizard-played wizard-arriving');cell.append(node('span',name(play.id)),card(play.card));table.append(cell);
+  await sleep(500);cell.classList.remove('wizard-arriving');
+ }
+ async function processState(g){
+  const old=latestState;
+  if(!old||old.round!==g.round||old.game!=='wizard'){
+   latestState=g;displayedTrickKey=null;await renderState(g);return;
+  }
+  const oldEvents=new Set(old.events.map(e=>e.id));
+  const fresh=g.events.filter(e=>!oldEvents.has(e.id));
+  const plays=fresh.filter(e=>e.text.startsWith('spielt '));
+  const finishedTrick=g.lastTrick&&trickKey(g)!==displayedTrickKey&&g.lastTrick.number>(old.lastTrick?.number||0);
+  latestState=g;
+  if(!plays.length&&!finishedTrick){await renderState(g);return;}
+  const table=$('wizard-table');
+  if(old.trick.length===0)table.replaceChildren();
+  for(const e of plays){
+   const played=g.trick.find(p=>p.id===e.actor)||g.lastTrick?.cards.find(p=>p.id===e.actor);
+   if(played)await showPlay(played);
+  }
+  if(finishedTrick){
+   displayedTrickKey=trickKey(g);
+   table.replaceChildren();
+   for(const play of g.lastTrick.cards){const cell=node('div',undefined,'wizard-played');cell.append(node('span',name(play.id)),card(play.card));table.append(cell);}
+   await sleep(550);
+   const notice=$('wizard-trick-announcement');notice.textContent='🏆 '+name(g.lastTrick.winner)+' gewinnt Stich '+g.lastTrick.number+'!';notice.classList.add('wizard-trick-win');
+   await sleep(1600);notice.classList.remove('wizard-trick-win');
+  }
+  await renderState(g);
+ }
+ socket.on('game:state',g=>{
+  if(g.game!=='wizard')return;
+  pendingStates.push(g);
+  if(playbackBusy)return;
+  playbackBusy=true;
+  (async()=>{try{while(pendingStates.length)await processState(pendingStates.shift());}catch(err){console.error('Wizard animation:',err);if(latestState)await renderState(latestState);}finally{playbackBusy=false;}})();
  });
 })();
