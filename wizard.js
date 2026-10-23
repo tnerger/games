@@ -5,7 +5,7 @@ const rand=n=>crypto.randomInt(n);
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
 const makeDeck=()=>shuffle([...suits.flatMap(suit=>Array.from({length:13},(_,i)=>({id:suit+(i+1),suit,value:i+1,type:'number'}))),...Array.from({length:4},(_,i)=>({id:'wizard'+i,suit:null,value:14,type:'wizard'})),...Array.from({length:4},(_,i)=>({id:'jester'+i,suit:null,value:0,type:'jester'}))]);
 function create(players,scores={}){
- const g={players:[...players],scores:{...scores},round:0,maxRounds:Math.floor(60/players.length),dealer:-1,hands:{},trump:null,indicator:null,bids:{},tricks:{},trick:[],lead:null,turn:0,phase:'bidding',finished:false,matchFinished:false,events:[],revision:0,history:[],lastRound:null};
+ const g={players:[...players],scores:{...scores},round:0,maxRounds:Math.floor(60/players.length),dealer:-1,hands:{},trump:null,indicator:null,bids:{},tricks:{},trick:[],lead:null,turn:0,phase:'bidding',finished:false,matchFinished:false,events:[],revision:0,history:[],lastRound:null,lastTrick:null};
  nextRound(g);return g;
 }
 function event(g,actor,text){g.events.push({id:g.events.length,at:Date.now(),actor,text});g.revision++;}
@@ -15,7 +15,7 @@ function nextRound(g){
  g.indicator=g.round===g.maxRounds?null:deck.pop()||null;
  g.trump=g.indicator?.type==='number'?g.indicator.suit:null;
  g.bids={};g.tricks=Object.fromEntries(g.players.map(id=>[id,0]));g.trick=[];g.lead=null;
- g.phase=g.indicator?.type==='wizard'?'choose-trump':'bidding';g.turn=g.phase==='choose-trump'?g.dealer:(g.dealer+1)%g.players.length;
+ g.lastTrick=null;g.phase=g.indicator?.type==='wizard'?'choose-trump':'bidding';g.turn=g.phase==='choose-trump'?g.dealer:(g.dealer+1)%g.players.length;
  event(g,null,'Runde '+g.round+' von '+g.maxRounds+' beginnt. '+(g.phase==='choose-trump'?'Der Geber wählt Trumpf.':'Stiche ansagen.'));
 }
 const next=(g,i)=> (i+1)%g.players.length;
@@ -54,7 +54,7 @@ function act(g,id,a){
  if(card.type==='number'&&!g.lead)g.lead=card.suit;
  g.trick.push({id,card});event(g,id,'spielt '+(card.type==='wizard'?'Zauberer':card.type==='jester'?'Narr':card.value+' '+card.suit)+'.');
  if(g.trick.length<g.players.length){g.turn=next(g,g.turn);return;}
- const win=winner(g);g.tricks[win]++;event(g,win,'gewinnt den Stich ('+g.tricks[win]+').');
+ const win=winner(g);g.tricks[win]++;g.lastTrick={winner:win,cards:g.trick.map(x=>({id:x.id,card:{...x.card}})),number:Object.values(g.tricks).reduce((a,b)=>a+b,0)};event(g,win,'gewinnt den Stich ('+g.tricks[win]+').');
  g.trick=[];g.lead=null;g.turn=g.players.indexOf(win);
  if(g.hands[g.players[0]].length===0){
   const points={};for(const p of g.players){const exact=g.bids[p]===g.tricks[p];points[p]=exact?20+10*g.tricks[p]:-10*Math.abs(g.bids[p]-g.tricks[p]);g.scores[p]=(g.scores[p]||0)+points[p];}
@@ -68,7 +68,7 @@ function restart(g){
  g.finished=false;nextRound(g);
 }
 function view(g,id){
- return {game:'wizard',players:g.players.map(pid=>({id:pid,count:g.hands[pid].length,bid:g.bids[pid]??null,tricks:g.tricks[pid]||0,score:g.scores[pid]||0})),hand:g.hands[id]||[],round:g.round,maxRounds:g.maxRounds,dealer:g.players[g.dealer],turn:g.players[g.turn],phase:g.phase,trump:g.trump,indicator:g.indicator,lead:g.lead,trick:g.trick,legal:g.players[g.turn]===id&&g.phase==='playing'?legal(g,id):[],finished:g.finished,matchFinished:g.matchFinished,lastRound:g.lastRound,history:g.history,events:g.events.slice(-60),revision:g.revision};
+ return {game:'wizard',players:g.players.map(pid=>({id:pid,count:g.hands[pid].length,bid:g.bids[pid]??null,tricks:g.tricks[pid]||0,score:g.scores[pid]||0})),hand:g.hands[id]||[],round:g.round,maxRounds:g.maxRounds,dealer:g.players[g.dealer],turn:g.players[g.turn],phase:g.phase,trump:g.trump,indicator:g.indicator,lead:g.lead,trick:g.trick,lastTrick:g.lastTrick,legal:g.players[g.turn]===id&&g.phase==='playing'?legal(g,id):[],finished:g.finished,matchFinished:g.matchFinished,lastRound:g.lastRound,history:g.history,events:g.events.slice(-60),revision:g.revision};
 }
 function botAction(g,id,level){
  if(g.phase==='choose-trump'){
