@@ -135,3 +135,7 @@
 #wizard-my-tricks{margin:16px 0 10px;padding:12px 14px;border-radius:12px;background:#1a3550;border:1px solid #6385a2;color:#fff1c4;font-weight:750;line-height:1.5;text-align:center}
 #wizard-next{margin:10px 0 22px;background:#f3c66d;color:#242039}
 #wizard-hand:empty{display:none}
+
+/* Compact Wizard personal bid counter */
+#wizard-my-tricks{display:inline-block;width:auto;max-width:100%;margin:8px 0 4px;padding:5px 9px;border-radius:7px;font-size:.82rem;font-weight:600;line-height:1.3;text-align:left}
+#wizard-trick-announcement:empty{min-height:0;margin:0;padding:0;border:0}
