@@ -33,3 +33,7 @@
 .move-in{animation:movein .55s ease-out both}.move-out{position:absolute;animation:moveout .55s ease-in both}
 @keyframes movein{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes moveout{from{transform:translateX(0);opacity:1}to{transform:translateX(-110%);opacity:0}}
+
+#uno-hand .newly-drawn{animation:handdraw .7s ease-out both}
+@keyframes handdraw{from{opacity:0;transform:translate(75px,-90px) rotate(18deg) scale(.65)}to{opacity:1;transform:translate(0,0) rotate(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.move-in,.move-out,#uno-hand .newly-drawn{animation:none}}
