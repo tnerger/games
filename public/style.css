@@ -139,3 +139,17 @@
 /* Compact Wizard personal bid counter */
 #wizard-my-tricks{display:inline-block;width:auto;max-width:100%;margin:8px 0 4px;padding:5px 9px;border-radius:7px;font-size:.82rem;font-weight:600;line-height:1.3;text-align:left}
 #wizard-trick-announcement:empty{min-height:0;margin:0;padding:0;border:0}
+
+/* Wizard end-of-round result dialog */
+.wizard-result-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:#080c1dcc;backdrop-filter:blur(5px)}
+.wizard-result-dialog{width:min(100%,520px);max-height:90dvh;overflow-y:auto;padding:24px 16px;border-radius:20px;background:linear-gradient(155deg,#303d62,#1a2340);border:2px solid #d2aa64;box-shadow:0 24px 70px #000b;text-align:center}
+.wizard-result-icon{font-size:2.5rem}
+.wizard-result-dialog h2{margin:6px 0 10px;font-size:1.5rem;color:#ffe0a0}
+.wizard-result-dialog p{margin:8px 0 15px;font-size:.9rem}
+#wizard-result-table{overflow-x:auto}
+#wizard-result-table table{width:100%;border-collapse:collapse;font-size:.78rem}
+#wizard-result-table th,#wizard-result-table td{padding:9px 4px;border-bottom:1px solid #58617e;text-align:right;white-space:nowrap}
+#wizard-result-table th:first-child,#wizard-result-table td:first-child{text-align:left}
+#wizard-result-table tr.wizard-exact{background:#2b574c}
+#wizard-result-winners{font-weight:750;color:#ffdd95}
+#wizard-result-close{margin-top:14px}
