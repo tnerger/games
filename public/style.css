@@ -72,3 +72,11 @@
 .skyjo-opponent-grid .skyjo-card,.skyjo-opponent-grid .skyjo-empty{min-height:65px;font-size:1.2rem;margin:0}
 @media(max-width:380px){#skyjo-hand{gap:5px}.skyjo-card{min-height:80px}}
 @media(prefers-reduced-motion:reduce){#skyjo-piles .skyjo-taken{animation:none}}
+
+.skyjo-result-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:18px;background:#080d20d9;backdrop-filter:blur(6px)}
+.skyjo-result-dialog{width:min(100%,440px);max-height:90dvh;overflow-y:auto;background:linear-gradient(155deg,#313d6d,#1e274b);border:2px solid #ffdc82;border-radius:22px;padding:22px 18px;text-align:center;box-shadow:0 16px 65px #000b;animation:skyjo-result-in .35s ease-out}
+.skyjo-result-icon{font-size:3rem}.skyjo-result-dialog h2{font-size:1.35rem;margin:10px 0}.skyjo-result-dialog p{font-size:.94rem}
+.skyjo-result-score-table{width:100%;border-collapse:collapse;text-align:left;margin:14px 0}.skyjo-result-score-table td,.skyjo-result-score-table th{padding:10px 5px;border-bottom:1px solid #67749a;font-size:.92rem}.skyjo-result-score-table td:not(:first-child),.skyjo-result-score-table th:not(:first-child){text-align:right}
+.skyjo-winner-row{background:#41604766;font-weight:800}#skyjo-result-penalty{background:#161e3b;padding:12px;border-radius:12px;text-align:left}
+@keyframes skyjo-result-in{from{opacity:0;transform:translateY(22px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.skyjo-result-dialog{animation:none}}
