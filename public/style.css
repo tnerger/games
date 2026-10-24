@@ -359,3 +359,17 @@ button.menu-toggle{width:48px;min-height:46px;margin:0;padding:6px;font-size:1.5
 .footer-logout{display:inline-block;margin-left:12px;color:#ff929e;font-weight:750;text-decoration:underline;text-underline-offset:3px}
 .footer-logout:hover{color:#ffc0c8}
 .footer-logout:focus-visible{outline:3px solid #f8cb69;outline-offset:4px}
+
+
+/* Öffentliche Räume und Raumerstellung */
+.room-public-option{display:flex;align-items:center;gap:12px;margin:18px 0 8px}
+.room-public-option input{width:23px;min-height:23px;accent-color:#ffc66b;flex:none}
+#public-rooms{margin-top:28px;border-top:1px solid #505a7f;padding-top:4px}
+#public-rooms h2{margin-top:18px}
+.public-room-entry{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid #505a7f}
+.public-room-entry>div{min-width:0;overflow-wrap:anywhere}
+.public-room-entry p{font-size:.85rem;margin:5px 0 0}
+.public-room-entry button{width:auto;min-height:43px;margin:0;padding:8px 12px;flex-shrink:0}
+#room-name-display{font-weight:700;color:#ffcf7c;overflow-wrap:anywhere}
+#players li{align-items:center;flex-wrap:wrap}
+#players .room-kick{width:auto;min-height:36px;margin:0;padding:6px 10px;font-size:.8rem;background:#90394b}
