@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+APP="/opt/games"
+SERVICE="games"
+RUN_AS="tobias"
+BACKUPS="/root/backups"
+LOCK="/run/lock/games-update.lock"
+[[ "$EUID" -eq 0 ]] || { echo "Bitte als root ausführen."; exit 1; }
+exec 9>"$LOCK"
+flock -n 9 || { echo "Ein Update läuft bereits."; exit 1; }
+cd "$APP"
+[[ -d .git ]] || { echo "Kein Git-Repository: $APP"; exit 1; }
+git_as_user() { runuser -u "$RUN_AS" -- git "$@"; }
+npm_as_user() { runuser -u "$RUN_AS" -- npm "$@"; }
+[[ "$(git_as_user branch --show-current)" == "main" ]] || { echo "Abbruch: Nicht auf main."; exit 1; }
+[[ -z "$(git_as_user status --porcelain --untracked-files=no)" ]] || { echo "Abbruch: lokale Änderungen."; exit 1; }
+OLD=$(git_as_user rev-parse HEAD)
+OLD_VERSION=$(node -p "require('./package.json').version")
+echo "Games v$OLD_VERSION: suche Updates ..."
+git_as_user fetch origin main
+NEW=$(git_as_user rev-parse origin/main)
+[[ "$OLD" != "$NEW" ]] || { echo "Bereits aktuell."; exit 0; }
+git_as_user merge-base --is-ancestor "$OLD" "$NEW" || { echo "Abbruch: kein Fast-Forward möglich."; exit 1; }
+mkdir -p "$BACKUPS"
+chmod 700 "$BACKUPS"
+umask 077
+BACKUP="$BACKUPS/games-$(date -u +%Y%m%d-%H%M%S).tar.gz"
+echo "Backup: $BACKUP"
+tar -czf "$BACKUP" -C /opt games
+gzip -t "$BACKUP"
+UPDATED=0
+rollback() {
+  rc=$?
+  trap - ERR
+  if [[ "$UPDATED" -eq 1 ]]; then
+    echo "Update fehlgeschlagen; stelle vorherigen Code wieder her ..."
+    systemctl stop "$SERVICE" || true
+    git_as_user reset --hard "$OLD" || true
+    if [[ -f package-lock.json ]]; then
+      npm_as_user ci --omit=dev || true
+    else
+      npm_as_user install --omit=dev --no-package-lock || true
+    fi
+    systemctl start "$SERVICE" || true
+  fi
+  echo "Backup (inkl. privater Daten): $BACKUP"
+  echo "Hinweis: Datenbankänderungen werden NICHT automatisch zurückgerollt."
+  exit "$rc"
+}
+trap rollback ERR
+echo "Installiere neue Version ..."
+UPDATED=1
+git_as_user merge --ff-only origin/main
+if [[ -f package-lock.json ]]; then
+  npm_as_user ci --omit=dev
+else
+  npm_as_user install --omit=dev --no-package-lock
+fi
+echo "Starte Dienst neu ..."
+systemctl restart "$SERVICE"
+echo "Prüfe lokalen HTTP-Endpunkt ..."
+READY=0
+for i in {1..15}; do
+  if systemctl is-active --quiet "$SERVICE" &&
+     curl -fsS --max-time 2 http://127.0.0.1:3000/api/auth/me >/dev/null; then
+    READY=1
+    break
+  fi
+  sleep 1
+done
+[[ "$READY" -eq 1 ]] || { echo "Healthcheck fehlgeschlagen."; false; }
+trap - ERR
+echo "Erfolg: v$OLD_VERSION -> v$(node -p "require('./package.json').version")"
+echo "Backup: $BACKUP"
