@@ -241,3 +241,16 @@
  #skyjo-board #skyjo-hand{max-width:420px}
  #skyjo-board .skyjo-opponent-grid .skyjo-card,#skyjo-board .skyjo-opponent-grid .skyjo-empty{min-height:64px}
 }
+
+/* Shared responsive action rows and active Skyjo turn */
+.skyjo-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0}
+.skyjo-toolbar>button{flex:1 1 180px;width:auto;min-width:0;margin:0}
+.skyjo-active-player{border:3px solid #ffcf69!important;box-shadow:0 0 0 3px #ffcf6930,0 0 24px #ffcf6945!important;transition:border-color .2s,box-shadow .2s}
+#skyjo-center.skyjo-active-player{border-radius:16px}
+.skyjo-opponent.skyjo-active-player summary{color:#ffe5a1}
+@media(min-width:700px){
+ .skyjo-toolbar>button{flex:0 1 auto;min-width:170px;max-width:290px}
+ #game-switch,#leave{display:inline-flex;width:auto;min-width:190px;max-width:300px;margin-right:12px;align-items:center;justify-content:center}
+ #wizard-play>button:not(.hidden),#uno-play>button:not(.hidden){display:inline-flex;width:auto;min-width:175px;max-width:300px;margin-right:10px;vertical-align:middle;align-items:center;justify-content:center}
+ #room-details #copy,#bot-setup #bot-open{width:auto;max-width:300px}
+}
