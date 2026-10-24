@@ -29,7 +29,7 @@ function ruleOptions(room){
  const isHost=room.host===identity?.id;
  $('bot-setup').classList.toggle('hidden',!isHost||room.gameStarted);
  const bots=$('bot-list');bots.replaceChildren();
- for(const p of room.players.filter(p=>p.bot)){const line=make('div',undefined,'bot-entry');line.append(make('span',p.name));if(isHost)line.append(button('Entfernen',()=>send('bot:remove',p.id),'secondary'));bots.append(line);}
+ for(const p of room.players.filter(p=>p.bot)){const line=make('div',undefined,'bot-entry');line.append(make('span',playerName(p)));if(isHost)line.append(button('Entfernen',()=>send('bot:remove',p.id),'secondary'));bots.append(line);}
  $('bot-add').disabled=room.players.length>=6;
  const el=$('uno-options');el.replaceChildren();
  const rules=room.gameRules||{};
