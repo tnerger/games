@@ -44,10 +44,14 @@
   const table=$('wizard-table');table.replaceChildren();
   for(const play of g.trick){const cell=node('div',undefined,'wizard-played');cell.append(node('span',name(play.id)),card(play.card));table.append(cell);}
   const actions=$('wizard-actions');actions.replaceChildren();
+  const bidding=mine&&g.phase==='bidding';
+  $('wizard-bid-overlay').classList.toggle('hidden',!bidding);
+  $('wizard-table').classList.toggle('wizard-table-blurred',bidding);
+  const bidOptions=$('wizard-bid-options');bidOptions.replaceChildren();
   const last=g.events.at(-1);
   $('wizard-status').textContent=g.finished?'🏁 Runde beendet':g.phase==='choose-trump'?(mine?'🔮 Bestimme die Trumpffarbe':name(g.turn)+' wählt Trumpf'):g.phase==='bidding'?(mine?'🎯 Wie viele Stiche schaffst du?':name(g.turn)+' sagt Stiche an'):mine?'🎯 Du bist am Zug!':name(g.turn)+' spielt.'; 
   if(mine&&g.phase==='choose-trump'){actions.append(node('p','Wähle die Trumpffarbe:'));for(const [s,label] of Object.entries(suits))actions.append(button(label,()=>send('game:action',{type:'trump',suit:s}),'wizard-choice '+s));}
-  if(mine&&g.phase==='bidding'){actions.append(node('p','Deine Stichansage:'));const bids=node('div',undefined,'wizard-bids');for(let n=0;n<=g.round;n++)bids.append(button(String(n),()=>send('game:action',{type:'bid',count:n})));actions.append(bids);}
+  if(bidding){for(let n=0;n<=g.round;n++)bidOptions.append(button(String(n),()=>send('game:action',{type:'bid',count:n})));}
   if(last)actions.append(node('p',(last.actor?name(last.actor)+': ':'')+last.text,'wizard-last'));
   const me=g.players.find(p=>p.id===identity?.id);
   const personal=$('wizard-my-tricks');
