@@ -99,6 +99,39 @@ app.post('/api/auth/change-password',json,(req,res)=>{
     res.json({ok:true});
   } catch(e){res.status(400).json({error:e.message});}
 });
+function sameOrigin(req, res, next) {
+  const origin = req.get('origin');
+  if (!origin) return next();
+  try {
+    const expected = new URL('https://' + req.get('host'));
+    const received = new URL(origin);
+    if (received.protocol === expected.protocol && received.host === expected.host) return next();
+    if (process.env.NODE_ENV !== 'production' && received.host === req.get('host')) return next();
+  } catch {}
+  return res.status(403).json({error:'Ungültiger Anfrageursprung.'});
+}
+app.post('/api/profile/username',json,sameOrigin,(req,res)=>{
+  const user=currentUser(req);
+  if (!user) return res.status(401).json({error:'Bitte anmelden.'});
+  if (user.must_change) return res.status(403).json({error:'Bitte zuerst das Passwort ändern.'});
+  if (!accounts.verifyPassword(req.body?.currentPassword || '',user.password_hash))
+    return res.status(403).json({error:'Aktuelles Passwort falsch.'});
+  try { res.json({user:accounts.changeUsername(user.id,req.body?.username)}); }
+  catch(e) { res.status(400).json({error:e.message}); }
+});
+app.post('/api/profile/password',json,sameOrigin,(req,res)=>{
+  const user=currentUser(req);
+  if (!user) return res.status(401).json({error:'Bitte anmelden.'});
+  if (user.must_change) return res.status(403).json({error:'Bitte zuerst das Passwort ändern.'});
+  if (!accounts.verifyPassword(req.body?.currentPassword || '',user.password_hash))
+    return res.status(403).json({error:'Aktuelles Passwort falsch.'});
+  try {
+    accounts.validateNewPassword(req.body?.newPassword,user.username,user.password_hash);
+    accounts.changePassword(user.id,req.body.newPassword);
+    res.clearCookie(cookieName,{path:'/',sameSite:'strict',secure:process.env.NODE_ENV==='production'});
+    res.json({ok:true});
+  } catch(e) { res.status(400).json({error:e.message}); }
+});
 app.get('/api/admin/users',requireUser,requireAdmin,(req,res)=>res.json({users:accounts.listUsers()}));
 app.post('/api/admin/users',requireUser,requireAdmin,json,(req,res)=>{
   try {res.json({user:accounts.createUser(req.body?.username,req.body?.password)});}
