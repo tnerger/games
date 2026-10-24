@@ -45,3 +45,22 @@ test('A new tile is drawn at the beginning of every turn',()=>{
  assert.equal(g.latestDraw.player,'b');
  assert.equal(g.bag.length,106-44);
 });
+
+test('Bot combines several opening melds to reach 30 points',()=>{
+ const g=rommy.create(['a','b']);
+ g.hands.a=[t('a1','red',4),t('a2','blue',4),t('a3','black',4),t('b1','red',6),t('b2','blue',6),t('b3','black',6)];
+ const move=rommy.botAction(g,'a');
+ assert.equal(move.type,'place');
+ assert.equal(move.groups.length,2);
+ assert.equal(move.groups.flat().length,6);
+});
+test('Bot inserts a joker into a table run and retains every table tile',()=>{
+ const g=rommy.create(['a','b']);
+ g.opened.a=true;
+ g.table=[[t('x1','red',5),t('x2','red',6),t('x3','red',7)]];
+ g.hands.a=[t('j','joker',0)];
+ const move=rommy.botAction(g,'a');
+ assert.equal(move.type,'place');
+ assert.ok(move.groups.flat().includes('j'));
+ assert.ok(['x1','x2','x3'].every(id=>move.groups.flat().includes(id)));
+});
