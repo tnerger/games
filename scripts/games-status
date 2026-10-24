@@ -13,9 +13,10 @@ git branch --show-current
 printf 'Dienst: '
 systemctl is-active "$SERVICE" || true
 printf 'Startmodus: '
-systemctl show "$SERVICE" -p Environment --value
-printf 'Dienstbenutzer: '
-systemctl show "$SERVICE" -p User --value
+systemctl show "$SERVICE" -p Environment --value | tr -d '\\n'
+printf '\\nDienstbenutzer: '
+systemctl show "$SERVICE" -p User --value | tr -d '\\n'
+printf '\\n'
 printf 'Port 3000: '
 if ss -ltnH '( sport = :3000 )' | grep -q '127.0.0.1:3000'; then
   echo 'nur localhost'
