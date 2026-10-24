@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
- let room=null,game=null,rows=[],rack=[],active=-1,signature='',sortMode='color',animatedDraw='',splitMode=new Set();
+ let room=null,game=null,rows=[],rack=[],active=-1,signature='',sortMode='color',animatedDraw='',splitMode=new Set(),shownWinnerKey=null;
  const colorOrder={red:0,blue:1,black:2,orange:3,joker:4};
  const labels={red:'Rot',blue:'Blau',black:'Schwarz',orange:'Orange',joker:'Joker'};
  const send=(action)=>emit('game:action',action);
@@ -115,6 +115,14 @@
    }
   }
  }
+ function showWinner(){
+  const winner=room?.players.find(p=>p.id===game.winner)?.name||'Ein Spieler';
+  const mine=game.winner===identity?.id;
+  $('rommy-result-title').textContent=mine?'🏆 Du hast gewonnen!':'🏆 '+winner+' gewinnt!';
+  $('rommy-result-message').textContent=mine?'Glückwunsch! Du hast alle deine Spielsteine ausgelegt.':'Die Partie ist beendet. '+winner+' hat alle Spielsteine ausgelegt.';
+  $('rommy-result-overlay').classList.remove('hidden');
+  $('rommy-result-close').focus();
+ }
  function render(){
   if(!game)return;
   const myTurn=game.turn===identity?.id&&!game.finished;
@@ -176,8 +184,11 @@
   $('rommy-submit').disabled=!myTurn||!moved;
   $('rommy-draw').disabled=!myTurn||moved;
   $('rommy-restart').classList.toggle('hidden',!game.finished||room?.host!==identity?.id);
+  $('rommy-result-reopen').classList.toggle('hidden',!game.finished);
   const last=game.events.at(-1);$('rommy-last').textContent=last?last.text:'';
  }
+ $('rommy-result-close').onclick=()=>$('rommy-result-overlay').classList.add('hidden');
+ $('rommy-result-reopen').onclick=()=>{if(game?.finished)showWinner();};
  $('start-rommy').onclick=()=>emit('game:start',{});
  $('rommy-restart').onclick=()=>emit('game:restart',{});
  $('rommy-reset').onclick=reset;
@@ -198,7 +209,7 @@
   if(r.activeGame==='rommy'){
    for(const id of ['uno-play','skyjo-play','wizard-play','elfer-play','uno-setup','skyjo-setup','wizard-setup','elfer-setup'])$(id).classList.add('hidden');
   }
-  if(!r.gameStarted){game=null;signature='';}
+  if(!r.gameStarted){game=null;signature='';shownWinnerKey=null;$('rommy-result-overlay').classList.add('hidden');}
  });
  socket.on('game:state',g=>{
   if(g.game!=='rommy')return;
@@ -211,5 +222,9 @@
   }else render();
   $('rommy-play').classList.remove('hidden');
   for(const id of ['uno-play','skyjo-play','wizard-play','elfer-play'])$(id).classList.add('hidden');
+  if(g.finished){
+   const key=(room?.code||'')+':'+(g.events?.[0]?.at||'')+':'+g.winner;
+   if(shownWinnerKey!==key){shownWinnerKey=key;showWinner();}
+  }else{shownWinnerKey=null;$('rommy-result-overlay').classList.add('hidden');}
  });
 })();
