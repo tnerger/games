@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 const send=(name,data)=>emit(name,data);
 let room=null,lastState=null,shownResultKey=null,shownRemovalKey=null,shownFinisherKey=null,discardAnimationTimer=null;
 const expandedOpponents=new Set();
-let expandedRoomCode=null;
+let expandedRoomCode=null,pendingFinishAction=null;
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const btn=(label,action,cls='secondary')=>{const x=el('button',label,cls);x.onclick=action;return x;};
 const who=id=>{const p=room?.players.find(p=>p.id===id);return p?playerName(p):'Mitspieler';};
@@ -13,8 +13,19 @@ function card(v,onclick,disabled=false){
  const x=btn(label(v),onclick,'skyjo-card '+(v===null?'back':v<=0?'low':v<=4?'medium':v<=8?'high':'highest'));
  x.disabled=disabled;x.setAttribute('aria-label',v===null?'Verdeckte Karte':'Karte '+v);return x;
 }
+function closeFinishConfirm(){pendingFinishAction=null;$('skyjo-finish-confirm').classList.add('hidden');}
+function confirmFinalCard(action){
+ const g=lastState;
+ if(g?.game==='skyjo'&&!g.finished&&g.finisher===null&&g.phase!=='reveal'&&g.hand.filter(c=>c&&!c.open).length===1&&g.hand[action.index]&&!g.hand[action.index].open){
+  pendingFinishAction={...action,revision:g.revision};
+  $('skyjo-finish-confirm').classList.remove('hidden');$('skyjo-finish-cancel').focus();return;
+ }
+ send('game:action',action);
+}
+$('skyjo-finish-cancel').onclick=closeFinishConfirm;
+$('skyjo-finish-accept').onclick=()=>{const action=pendingFinishAction;closeFinishConfirm();if(action&&lastState?.revision===action.revision&&lastState?.turn===identity?.id)send('game:action',{type:action.type,index:action.index});};
 function updateRoom(r){
- room=r;if(expandedRoomCode!==r.code){expandedOpponents.clear();expandedRoomCode=r.code;}if(!r.gameStarted){lastState=null;shownResultKey=null;shownRemovalKey=null;shownFinisherKey=null;$('skyjo-finisher-overlay').classList.add('hidden');$('skyjo-result-overlay').classList.add('hidden');}const selected=r.selectedGame||'uno',active=r.activeGame;
+ room=r;if(expandedRoomCode!==r.code){expandedOpponents.clear();expandedRoomCode=r.code;}if(!r.gameStarted){closeFinishConfirm();lastState=null;shownResultKey=null;shownRemovalKey=null;shownFinisherKey=null;$('skyjo-finisher-overlay').classList.add('hidden');$('skyjo-result-overlay').classList.add('hidden');}const selected=r.selectedGame||'uno',active=r.activeGame;
  $('game-picker').classList.toggle('hidden',r.gameStarted);
  $('game-choice').value=selected;$('game-choice').disabled=r.host!==identity?.id;
  $('skyjo-setup').classList.toggle('hidden',r.gameStarted||selected!=='skyjo');
@@ -41,6 +52,7 @@ socket.on('room',updateRoom);
 socket.on('game:state',g=>{
  const previous=lastState;
  lastState=g;
+ if(pendingFinishAction&&pendingFinishAction.revision!==g.revision)closeFinishConfirm();
  $('game-switch').disabled=false;
  if(g.game!=='skyjo')return;
  const mine=g.turn===identity?.id;
@@ -98,7 +110,7 @@ socket.on('game:state',g=>{
  g.hand.forEach((c,i)=>{if(!c){hand.append(el('div','—','skyjo-empty'));return;}
   const available=phase==='reveal'&&!c.open&&g.revealed<2||mine&&(phase==='replace'||phase==='flip'&&!c.open);
   const action=phase==='reveal'?'reveal':phase==='flip'?'flip':'replace';
-  hand.append(card(g.finished||c.open?c.value:null,()=>send('game:action',{type:action,index:i}),g.finished||!available));
+  hand.append(card(g.finished||c.open?c.value:null,()=>confirmFinalCard({type:action,index:i}),g.finished||!available));
  });
  const actions=$('skyjo-actions');actions.replaceChildren();
  if(mine&&phase==='replace')actions.append(el('p','Tippe auf eine deiner Karten, um sie gegen die gezogene Karte auszutauschen.'));
