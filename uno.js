@@ -114,7 +114,7 @@ function act(g,id,a){
  if(g.awaitingSwap)return;
  g.turn=next(g);
  if(c.value==='wild4'&&g.rules.challenge){g.awaitingChallenge=true;return;}
- if(g.pending&&!g.rules.stacking&&!g.awaitingChallenge){g.autoPenalty=true;}
+ if(g.pending&&!g.awaitingChallenge&&(!g.rules.stacking||g.pendingType!=='draw2'||!g.hands[g.players[g.turn]].some(x=>x.value==='draw2'))){g.autoPenalty=true;}
  if(g.finishAfterPenalty&&!g.pending&&!g.awaitingChallenge){g.finished=true;g.winner=g.finishAfterPenalty;g.finishAfterPenalty=null;g.log.push('Spiel beendet!');}
 }
 module.exports={create,view,act,defaults,descriptions};
