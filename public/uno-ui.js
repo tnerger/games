@@ -133,7 +133,34 @@ socket.on('game:state',state=>{
  const colorText={red:'ROT',yellow:'GELB',green:'GRÜN',blue:'BLAU'};
  $('uno-restart').classList.toggle('hidden',!state.finished||roomInfo?.host!==identity.id);
  showScores();
- const top=$('uno-top');top.replaceChildren(card(state.top,false));
+ const top=$('uno-top');
+ const oldTop=currentTopForAnimation;
+ const newTop=state.top;
+ const changed=oldTop&&oldTop.id!==newTop.id;
+ top.replaceChildren();
+ if(changed){const under=card(oldTop,false);under.classList.add('uno-top-under');top.append(under);}
+ const topCard=card(newTop,false);topCard.classList.add('uno-top-card');
+ if(changed)topCard.classList.add('uno-card-slide-in');
+ if(state.autoPenalty)topCard.classList.add('uno-penalty-pulse');
+ top.append(topCard);currentTopForAnimation=newTop;
+ const opponents=$('uno-opponents');opponents.replaceChildren();
+ for(const p of state.players.filter(p=>p.id!==identity?.id)){
+  const person=roomInfo?.players.find(x=>x.id===p.id);
+  const active=state.turn===p.id&&!state.finished;
+  const item=make('div',undefined,'uno-opponent'+(active?' uno-opponent-active':''));
+  item.append(make('span',active?'▶':'','uno-turn-arrow'),make('span',person?playerName(person):'Mitspieler','uno-opponent-name'),make('span','🂠 '+p.count,'uno-opponent-count'));
+  opponents.append(item);
+ }
+ if(state.finished){
+  const resultKey=(roomInfo?.code||'')+':'+(state.events?.[0]?.at||0)+':'+state.winner;
+  if(shownUnoResult!==resultKey){
+   shownUnoResult=resultKey;
+   $('uno-result-title').textContent='🏆 '+displayName(state.winner)+' hat UNO gewonnen!';
+   $('uno-result-description').textContent=state.winner===identity?.id?'Glückwunsch! Du hast die Partie gewonnen.':displayName(state.winner)+' hat alle Karten abgelegt und die Partie gewonnen.';
+   modal('uno-result-overlay',true);
+  }
+ }
+ $('uno-result-reopen').classList.toggle('hidden',!state.finished);
  const effect=$('uno-effect');effect.replaceChildren(document.createTextNode('Aktuelle Farbe: '));const colored=make('strong',names[state.color],'active-color-text '+state.color);effect.append(colored,document.createTextNode(' · Karten der anderen: '+state.players.filter(p=>p.id!==identity.id).map(p=>p.count).join(', ')));
  const hand=$('uno-hand');hand.replaceChildren(...state.hand.map(c=>{const element=card(c,mine&&!state.finished&&state.canPlay.includes(c.id));if(freshIds.has(c.id))element.classList.add('newly-drawn');return element;}));
  const actions=$('uno-actions');actions.replaceChildren();
