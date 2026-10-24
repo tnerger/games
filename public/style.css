@@ -254,3 +254,27 @@
  #wizard-play>button:not(.hidden),#uno-play>button:not(.hidden){display:inline-flex;width:auto;min-width:175px;max-width:300px;margin-right:10px;vertical-align:middle;align-items:center;justify-content:center}
  #room-details #copy,#bot-setup #bot-open{width:auto;max-width:300px}
 }
+
+/* UNO: card pile motion, automatic penalties, named opponents, victory */
+#uno-top{position:relative;min-height:144px;align-items:center;isolation:isolate}
+#uno-top .uno-card{flex:0 0 78px}
+#uno-top .uno-top-under{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:0;pointer-events:none}
+#uno-top .uno-top-card{position:relative;z-index:1}
+#uno-top .uno-card-slide-in{animation:uno-card-onto-pile .7s cubic-bezier(.2,.8,.2,1) both}
+@keyframes uno-card-onto-pile{from{opacity:.9;transform:translate(105px,-32px) rotate(17deg) scale(.92)}to{opacity:1;transform:translate(0,0) rotate(0) scale(1)}}
+#uno-top .uno-penalty-pulse{animation:uno-penalty-warning .42s ease-in-out 3!important;box-shadow:0 0 0 4px #ffda79,0 0 24px #ffb347!important}
+@keyframes uno-penalty-warning{0%,100%{transform:scale(1)}50%{transform:scale(1.15);filter:brightness(1.4)}}
+#uno-opponents{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin:8px 0 16px}
+.uno-opponent{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:#1b2343;border:2px solid #465377;min-width:130px}
+.uno-opponent-active{border-color:#ffcd66;box-shadow:0 0 14px #ffcf6655}
+.uno-turn-arrow{color:#ffcf66;font-size:1.2rem;min-width:15px}
+.uno-opponent-name{font-weight:750}
+.uno-opponent-count{margin-left:auto;color:#d4daee;white-space:nowrap}
+.uno-auto-penalty{font-weight:750;color:#ffe0a0}
+.uno-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}
+.uno-toolbar>button{flex:1 1 170px;width:auto;min-width:0;margin:0}
+.uno-result-dialog{text-align:center;border:2px solid #f5d47b;background:linear-gradient(145deg,#3b3765,#263957)}
+.uno-result-trophy{font-size:4rem;animation:uno-trophy 1.2s ease-in-out infinite alternate}
+@keyframes uno-trophy{from{transform:scale(1) rotate(-5deg)}to{transform:scale(1.12) rotate(5deg)}}
+@media(min-width:700px){.uno-toolbar>button{flex:0 1 auto;min-width:180px;max-width:290px}}
+@media(prefers-reduced-motion:reduce){#uno-top .uno-card-slide-in,#uno-top .uno-penalty-pulse,.uno-result-trophy{animation:none!important}}
