@@ -333,3 +333,13 @@
 #elfer-result-content td,#elfer-result-content th{padding:8px 5px;border-bottom:1px solid #56607d;text-align:left}
 @media(min-width:800px){#elfer-play{width:min(1100px,calc(100vw - 64px));position:relative;left:50%;transform:translateX(-50%)}}
 @media(max-width:520px){.elfer-row{padding:9px 4px}.elfer-row-numbers{gap:1px}.elfer-slot{min-height:27px;font-size:.51rem}.elfer-card{width:48px;min-height:68px;font-size:1.2rem}}
+
+/* 11er Raus: drawn-card reveal and unmistakable end-turn action */
+.elfer-draw-dialog{text-align:center;max-width:390px}
+#elfer-draw-card{display:flex;justify-content:center;margin:18px 0}
+#elfer-draw-card .elfer-card{width:112px;min-height:156px;font-size:3rem;opacity:1;transform:rotate(-3deg);box-shadow:0 12px 30px #0008;animation:elfer-card-reveal .3s ease-out both}
+#elfer-draw-confirm{background:#ffc66b}
+#elfer-actions .elfer-end-turn{background:#ffc66b;color:#242039;font-weight:900;animation:elfer-end-pulse 1.25s ease-in-out infinite;box-shadow:0 0 0 0 #ffc66b88}
+@keyframes elfer-end-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 #ffc66b77}50%{transform:scale(1.045);box-shadow:0 0 0 9px #ffc66b00}}
+@keyframes elfer-card-reveal{from{opacity:0;transform:translateY(18px) rotate(-12deg) scale(.8)}to{opacity:1;transform:translateY(0) rotate(-3deg) scale(1)}}
+@media(prefers-reduced-motion:reduce){#elfer-actions .elfer-end-turn,#elfer-draw-card .elfer-card{animation:none!important}}
