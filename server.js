@@ -99,6 +99,12 @@ function scheduleBot(r){
  const revealing=r.gameType==='skyjo'&&r.game.phase==='reveal';
  const id=revealing?r.game.players.find(pid=>r.players.get(pid)?.bot&&(r.game.revealed[pid]||0)<2):r.game.players[r.game.turn];
  const player=r.players.get(id);
+ if(r.gameType==='uno'&&r.game.autoPenalty){
+  if(botTimers.has(r.code))return;
+  const game=r.game;
+  const timer=setTimeout(()=>{botTimers.delete(r.code);if(r.game!==game||!game.autoPenalty||game.finished)return;try{performAction(r,game.players[game.turn],{type:'draw'});}catch(err){console.error('Automatische UNO-Strafe:',err.message);}},1250);
+  botTimers.set(r.code,timer);return;
+ }
  if(!player?.bot||botTimers.has(r.code))return;
  const delay=revealing?450:r.gameType==='wizard'?850:r.gameType==='skyjo'&&['replace','flip'].includes(r.game.phase)?650:2400;
  const game=r.game;
@@ -196,6 +202,7 @@ io.on('connection', socket => {
   socket.on('game:action',(action,ack)=>{
     const r=rooms.get(socket.data.room);
     if(!r?.game)return respond(ack,{error:'Kein Spiel aktiv.'});
+    if(r.gameType==='uno'&&r.game.autoPenalty)return respond(ack,{error:'Strafkarten werden automatisch gezogen.'});
     try{performAction(r,socket.data.player,action);respond(ack,{ok:true});}
     catch(err){respond(ack,{error:err.message});}
   });
