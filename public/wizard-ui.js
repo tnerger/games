@@ -27,7 +27,7 @@
  }
  $('start-wizard').onclick=()=>send('game:start',{});
  $('wizard-next').onclick=()=>send('game:restart',{});
- $('wizard-result-close').onclick=()=>{$('wizard-result-overlay').classList.add('hidden');$('wizard-result-reopen').focus();};
+ $('wizard-result-close').onclick=()=>{$('wizard-result-overlay').classList.add('hidden');const table=$('wizard-table');const rect=table.getBoundingClientRect();const top=window.scrollY+rect.top+rect.height/2-window.innerHeight/2;window.scrollTo({top:Math.max(0,top),behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});};
  $('wizard-result-reopen').onclick=()=>{$('wizard-result-overlay').classList.remove('hidden');$('wizard-result-close').focus();};
  $('wizard-log-toggle').onclick=()=>{const l=$('wizard-log');const open=l.classList.toggle('hidden')===false;$('wizard-log-toggle').textContent=open?'Spielverlauf ausblenden':'Spielverlauf anzeigen';};
  socket.on('room',roomUpdate);
