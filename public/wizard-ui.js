@@ -62,7 +62,8 @@
    if(g.matchFinished){const best=Math.max(...g.players.map(p=>p.score));result.append(node('strong','🏆 Gewinner: '+g.players.filter(p=>p.score===best).map(p=>name(p.id)).join(' & ')));}
    scores.append(result);
   }
-  $('wizard-next').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
+  $('wizard-next').classList.toggle('hidden',!g.finished||room?.host!==identity?.id);
+  $('wizard-next').textContent=g.matchFinished?'🎲 Neue Wizard-Partie starten':'Nächste Wizard-Runde';
   updateResults(g);
   const log=$('wizard-log');log.replaceChildren(...g.events.slice().reverse().map(e=>node('p',new Date(e.at).toLocaleTimeString('de-DE')+' · '+(e.actor?name(e.actor)+': ':'')+e.text)));
  }
