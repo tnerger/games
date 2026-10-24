@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+APP="/opt/games"
+SERVICE="games"
+cd "$APP"
+echo "=== Games Status ==="
+printf 'Version: '
+node -p "require('./package.json').version"
+printf 'Commit: '
+git rev-parse --short HEAD
+printf 'Branch: '
+git branch --show-current
+printf 'Dienst: '
+systemctl is-active "$SERVICE" || true
+printf 'Startmodus: '
+systemctl show "$SERVICE" -p Environment --value
+printf 'Dienstbenutzer: '
+systemctl show "$SERVICE" -p User --value
+printf 'Port 3000: '
+if ss -ltnH '( sport = :3000 )' | grep -q '127.0.0.1:3000'; then
+  echo 'nur localhost'
+else
+  echo 'nicht auf 127.0.0.1:3000 gefunden (bitte prüfen)'
+fi
+printf 'HTTP-Check: '
+if curl -fsS --max-time 3 http://127.0.0.1:3000/api/auth/me >/dev/null; then
+  echo 'OK'
+else
+  echo 'FEHLER'
+fi
+if [[ -d /root/backups && -r /root/backups ]]; then
+  echo 'Letzte Backups:'
+  find /root/backups -maxdepth 1 -type f -name 'games-*.tar.gz' -printf '%TY-%Tm-%Td %TH:%TM %f\n' | sort -r | head -n 5 || true
+else
+  echo 'Backups: nur als root sichtbar'
+fi
