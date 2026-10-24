@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
- let room=null,game=null,rows=[],rack=[],active=0,signature='',sortMode='color',animatedDraw='';
+ let room=null,game=null,rows=[],rack=[],active=0,signature='',sortMode='color',animatedDraw='',splitMode=new Set();
  const colorOrder={red:0,blue:1,black:2,orange:3,joker:4};
  const labels={red:'Rot',blue:'Blau',black:'Schwarz',orange:'Orange',joker:'Joker'};
  const send=(action)=>emit('game:action',action);
@@ -67,7 +67,7 @@
  function splitGroup(index,at){
   const left=rows[index].slice(0,at),right=rows[index].slice(at);
   if(!left.length||!right.length)return;
-  rows.splice(index,1,left,right);active=index+1;render();
+  rows.splice(index,1,left,right);splitMode.clear();active=index+1;render();
  }
  function sortRack(){
   if(!game)return;
@@ -79,7 +79,7 @@
    return (x.color==='joker'?14:x.value)-(y.color==='joker'?14:y.value)||colorOrder[x.color]-colorOrder[y.color]||x.id.localeCompare(y.id);
   });
  }
- function reset(){if(!game)return;rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);sortRack();active=rows.length;render();}
+ function reset(){if(!game)return;splitMode.clear();rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);sortRack();active=rows.length;render();}
  function render(){
   if(!game)return;
   const myTurn=game.turn===identity?.id&&!game.finished;
@@ -95,9 +95,16 @@
   rows.forEach((ids,index)=>{
    const line=node('div','rommy-row'+(active===index?' selected':''));const head=node('button','rommy-row-select','Gruppe '+(index+1)+(active===index?' ✓':''));
    head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=index;render();};line.append(head);
+   const toggle=node('button','rommy-split-toggle'+(splitMode.has(index)?' active':''),'✂');
+   toggle.type='button';toggle.title=splitMode.has(index)?'Teilungspunkte ausblenden':'Teilungspunkte anzeigen';
+   toggle.setAttribute('aria-label',toggle.title);
+   toggle.setAttribute('aria-pressed',String(splitMode.has(index)));
+   toggle.disabled=!myTurn||ids.length<2;
+   toggle.onclick=()=>{if(splitMode.has(index))splitMode.delete(index);else splitMode.add(index);render();};
+   line.append(toggle);
    const tiles=node('div','rommy-row-tiles');
    ids.forEach((id,pos)=>{
-    if(pos>0){
+    if(pos>0&&splitMode.has(index)){
      const split=node('button','rommy-split','✂');
      split.type='button';split.title='Gruppe nach Stein '+pos+' teilen';
      split.setAttribute('aria-label','Gruppe '+(index+1)+' nach '+pos+' Steinen teilen');
