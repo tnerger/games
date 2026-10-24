@@ -2,7 +2,7 @@
 (()=>{
  const $=id=>document.getElementById(id),send=(name,data)=>emit(name,data);
  let room=null,roundSeen=null,shownResultKey=null;
- let displayedTrickKey=null,latestState=null,playbackBusy=false;
+ let displayedTrickKey=null,latestState=null,playbackBusy=false,animateNewHand=false;
  const pendingStates=[];
  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const suits={blue:'Eis',red:'Feuer',green:'Wald',yellow:'Sonne'};
@@ -52,7 +52,7 @@
   const me=g.players.find(p=>p.id===identity?.id);
   const personal=$('wizard-my-tricks');
   personal.textContent=me?(me.bid===null?'🎯 Ansage: offen · Stiche: '+me.tricks:'🎯 Ansage '+me.bid+' · Stiche '+me.tricks):'';
-  const hand=$('wizard-hand');hand.replaceChildren();for(const c of g.hand)hand.append(card(c,mine&&g.phase==='playing'&&g.legal.includes(c.id),x=>send('game:action',{type:'play',cardId:x.id})));
+  const hand=$('wizard-hand');hand.replaceChildren();for(const [i,c] of g.hand.entries()){const element=card(c,mine&&g.phase==='playing'&&g.legal.includes(c.id),x=>send('game:action',{type:'play',cardId:x.id}));if(animateNewHand){element.classList.add('wizard-deal-in');element.style.setProperty('--deal-index',String(i));}hand.append(element);}animateNewHand=false;
   const scores=$('wizard-scoreboard');scores.replaceChildren(node('h3','Stiche & Punktestand'));
   const t=node('table');const th=node('tr');for(const x of ['Spieler','Ansage','Stiche','Gesamt'])th.append(node('th',x));t.append(th);
   for(const p of g.players){const tr=node('tr');for(const v of [name(p.id),p.bid??'–',p.tricks,p.score])tr.append(node('td',String(v)));t.append(tr);}scores.append(t);
@@ -95,7 +95,7 @@
  async function processState(g){
   const old=latestState;
   if(!old||old.round!==g.round||old.game!=='wizard'){
-   latestState=g;displayedTrickKey=null;const notice=$('wizard-trick-announcement');notice.textContent='';notice.classList.remove('wizard-trick-win');await renderState(g);return;
+   animateNewHand=true;latestState=g;displayedTrickKey=null;const notice=$('wizard-trick-announcement');notice.textContent='';notice.classList.remove('wizard-trick-win');await renderState(g);return;
   }
   const oldEvents=new Set(old.events.map(e=>e.id));
   const fresh=g.events.filter(e=>!oldEvents.has(e.id));
