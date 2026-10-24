@@ -109,7 +109,8 @@ socket.on('game:state',g=>{
   const resultKey=(room?.code||'')+':'+g.events[0]?.at+':'+g.revision;
   if(shownResultKey===null||!shownResultKey.startsWith((room?.code||'')+':'+g.events[0]?.at+':')){shownResultKey=resultKey;const reveal=()=>{$('skyjo-result-overlay').classList.remove('hidden');$('skyjo-result-close').focus();};if(g.lastRemoval&&previous?.revision<g.lastRemoval.revision)setTimeout(()=>{if(lastState===g)reveal();},2100);else reveal();}
  }else{$('skyjo-result-overlay').classList.add('hidden');$('skyjo-result-reopen').classList.add('hidden');shownResultKey=null;}
- $('skyjo-restart').classList.toggle('hidden',!g.finished||g.matchFinished||room?.host!==identity?.id);
+ $('skyjo-restart').classList.toggle('hidden',!g.finished||room?.host!==identity?.id);
+ $('skyjo-restart').textContent=g.matchFinished?'🎲 Neue Skyjo-Partie starten':'Nächste Skyjo-Runde';
  if(g.matchFinished)$('skyjo-turn').textContent='🏆 Spiel beendet! '+who(g.players.reduce((a,b)=>g.scores[a]<=g.scores[b]?a:b))+' gewinnt mit den wenigsten Punkten.';
  $('game-switch').disabled=!g.finished;
  if(g.lastRemoval){
