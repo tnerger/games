@@ -7,7 +7,7 @@ const expandedOpponents=new Set();
 let expandedRoomCode=null;
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const btn=(label,action,cls='secondary')=>{const x=el('button',label,cls);x.onclick=action;return x;};
-const who=id=>room?.players.find(p=>p.id===id)?.name||'Mitspieler';
+const who=id=>{const p=room?.players.find(p=>p.id===id);return p?playerName(p):'Mitspieler';};
 const label=v=>v===null?'?':String(v);
 function card(v,onclick,disabled=false){
  const x=btn(label(v),onclick,'skyjo-card '+(v===null?'back':v<=0?'low':v<=4?'medium':v<=8?'high':'highest'));
