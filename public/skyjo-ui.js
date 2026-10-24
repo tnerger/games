@@ -86,12 +86,14 @@ socket.on('game:state',g=>{
  const actions=$('skyjo-actions');actions.replaceChildren();
  if(mine&&phase==='replace')actions.append(el('p','Tippe auf eine deiner Karten, um sie gegen die gezogene Karte auszutauschen.'));
  if(mine&&phase==='flip')actions.append(el('p','Tippe auf eine verdeckte Karte, um sie aufzudecken.'));
- const players=$('skyjo-players');players.replaceChildren(el('h3','Karten der Mitspieler'));
- for(const p of g.players.filter(p=>p.id!==identity?.id)){
+ const opponents=g.players.filter(p=>p.id!==identity?.id);
+ const left=$('skyjo-opponents-left'),right=$('skyjo-opponents-right');
+ left.replaceChildren();right.replaceChildren();
+ for(const [opponentIndex,p] of opponents.entries()){
   const details=el('details',undefined,'skyjo-opponent');details.open=expandedOpponents.has(p.id)||window.matchMedia('(min-width: 900px)').matches;const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');summary.addEventListener('click',()=>{if(details.open)expandedOpponents.delete(p.id);else expandedOpponents.add(p.id);});
   const grid=el('div',undefined,'skyjo-opponent-grid');
   for(const c of p.layout||[])grid.append(c?card(c.open?c.value:null,()=>{},true):el('div','—','skyjo-empty'));
-  details.append(summary,grid);players.append(details);
+  details.append(summary,grid);(opponentIndex%2===0?left:right).append(details);
  }
  const scores=$('skyjo-scores');scores.replaceChildren(el('h3','Punktetafel'));
  for(const p of g.players)scores.append(el('p',who(p.id)+': '+(g.scores[p.id]||0)+' Punkte'+(g.roundScores?' (Runde: '+g.roundScores[p.id]+')':'')));
@@ -118,7 +120,7 @@ socket.on('game:state',g=>{
   if(shownRemovalKey!==key){
    shownRemovalKey=key;
    const removal=g.lastRemoval;
-   const grid=removal.player===identity?.id?$('skyjo-hand'):[...$('skyjo-players').querySelectorAll('.skyjo-opponent')].find(d=>d.querySelector('summary')?.textContent.startsWith(who(removal.player)+' ·'))?.querySelector('.skyjo-opponent-grid');
+   const grid=removal.player===identity?.id?$('skyjo-hand'):[...$('skyjo-board').querySelectorAll('.skyjo-opponent')].find(d=>d.querySelector('summary')?.textContent.startsWith(who(removal.player)+' ·'))?.querySelector('.skyjo-opponent-grid');
    if(grid){
     if(removal.player!==identity?.id){const details=grid.closest('details');if(details)details.open=true;}
     for(const item of removal.cards){const old=grid.children[item.index];if(!old)continue;const preview=card(item.value,()=>{},true);preview.classList.add('skyjo-removing');old.replaceWith(preview);}
