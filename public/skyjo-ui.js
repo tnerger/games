@@ -2,7 +2,7 @@
 (()=>{
 const $=id=>document.getElementById(id);
 const send=(name,data)=>emit(name,data);
-let room=null,lastState=null,shownResultKey=null,shownRemovalKey=null;
+let room=null,lastState=null,shownResultKey=null,shownRemovalKey=null,discardAnimationTimer=null;
 const expandedOpponents=new Set();
 let expandedRoomCode=null;
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
@@ -49,9 +49,27 @@ socket.on('game:state',g=>{
  const deckButton=btn('🂠',()=>send('game:action',{type:'take',source:'deck'}),'skyjo-pile skyjo-deck');deckButton.disabled=!choosing;
  deck.append(deckButton,el('span','Ziehstapel','skyjo-pile-label'));
  const discard=el('div',undefined,'skyjo-stack'+(taking?' skyjo-muted':''));
+ const discardSurface=el('div',undefined,'skyjo-discard-surface');
  const discardButton=card(g.discard??null,()=>send('game:action',{type:'take',source:'discard'}),!choosing||g.discard==null);discardButton.classList.add('skyjo-pile');
- discard.append(discardButton,el('span','Ablagestapel','skyjo-pile-label'));
+ discardSurface.append(discardButton);
+ discard.append(discardSurface,el('span','Ablagestapel','skyjo-pile-label'));
  piles.append(deck,discard);
+ const lastMove=g.events.at(-1)?.text||'';
+ const sameRound=previous?.game==='skyjo'&&previous.events?.[0]?.at===g.events?.[0]?.at;
+ const discardChanged=sameRound&&previous.revision!==g.revision&&previous.discard!==g.discard;
+ const tookDiscard=discardChanged&&lastMove.includes('vom Ablagestapel genommen');
+ const placedDiscard=discardChanged&&(lastMove.includes('getauscht')||lastMove.includes('abgeworfen')||lastMove.includes('Spalte mit'));
+ if(tookDiscard||placedDiscard){
+  if(discardAnimationTimer)clearTimeout(discardAnimationTimer);
+  const oldTop=previous.discard;
+  if(tookDiscard){
+   const outgoing=card(oldTop,()=>{},true);outgoing.classList.add('skyjo-pile','skyjo-discard-slide-out');discardSurface.append(outgoing);
+  }else{
+   discardButton.classList.add('skyjo-discard-slide-in');
+   if(oldTop!=null){const below=card(oldTop,()=>{},true);below.classList.add('skyjo-pile','skyjo-discard-under');discardSurface.prepend(below);}
+  }
+  discardAnimationTimer=setTimeout(()=>{discardSurface.querySelectorAll('.skyjo-discard-slide-out,.skyjo-discard-under').forEach(n=>n.remove());discardButton.classList.remove('skyjo-discard-slide-in');},620);
+ }
  if(taking){
   const taken=el('div',undefined,'skyjo-taken');
   taken.append(card(g.held,()=>{},true),el('span','Gezogene Karte','skyjo-pile-label'));
