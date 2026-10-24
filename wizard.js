@@ -70,19 +70,71 @@ function restart(g){
 function view(g,id){
  return {game:'wizard',players:g.players.map(pid=>({id:pid,count:g.hands[pid].length,bid:g.bids[pid]??null,tricks:g.tricks[pid]||0,score:g.scores[pid]||0})),hand:g.hands[id]||[],round:g.round,maxRounds:g.maxRounds,dealer:g.players[g.dealer],turn:g.players[g.turn],phase:g.phase,trump:g.trump,indicator:g.indicator,lead:g.lead,trick:g.trick,lastTrick:g.lastTrick,legal:g.players[g.turn]===id&&g.phase==='playing'?legal(g,id):[],finished:g.finished,matchFinished:g.matchFinished,lastRound:g.lastRound,history:g.history,events:g.events.slice(-60),revision:g.revision};
 }
+// Estimates the chance that a card wins a trick using the visible cards only.
+function cardStrength(card,g,hand){
+ if(card.type==='wizard')return .995;
+ if(card.type==='jester')return .005;
+ const remaining=13-card.value;
+ const trump=card.suit===g.trump;
+ const same=hand.filter(c=>c.type==='number'&&c.suit===card.suit).length;
+ let p=Math.pow((13-remaining)/13,Math.max(1,g.players.length-1));
+ if(trump)p=.55+.42*p;
+ else if(g.trump)p*=.70;
+ if(card.value===13)p=Math.max(p,trump? .97 : g.trump? .75 : .94);
+ return Math.max(.02,Math.min(.98,p+(same===1&&card.value>=10?.04:0)));
+}
+function currentWinner(trick,lead,trump){
+ const wizard=trick.find(x=>x.card.type==='wizard');if(wizard)return wizard.id;
+ const numbers=trick.filter(x=>x.card.type==='number');
+ if(!numbers.length)return trick[0]?.id||null;
+ const trumps=numbers.filter(x=>x.card.suit===trump);
+ const eligible=trumps.length?trumps:numbers.filter(x=>x.card.suit===lead);
+ return eligible.reduce((a,b)=>a.card.value>=b.card.value?a:b).id;
+}
+function estimateBid(g,id){
+ const hand=g.hands[id];
+ const estimate=hand.reduce((sum,c)=>sum+cardStrength(c,g,hand),0);
+ // Bidding is about hitting the target, not taking as many tricks as possible.
+ return Math.max(0,Math.min(g.round,Math.round(estimate)));
+}
 function botAction(g,id,level){
+ const hand=g.hands[id];
  if(g.phase==='choose-trump'){
-  const counts=suits.map(suit=>({suit,n:g.hands[id].filter(c=>c.suit===suit).length}));
-  counts.sort((a,b)=>b.n-a.n);return {type:'trump',suit:level==='easy'?suits[rand(4)]:counts[0].suit};
+  const counts=suits.map(suit=>({suit,score:hand.reduce((sum,c)=>sum+(c.type==='number'&&c.suit===suit?(c.value/13)**2+.15:0),0)}));
+  counts.sort((a,b)=>b.score-a.score);
+  return {type:'trump',suit:level==='easy'?suits[rand(4)]:counts[0].suit};
  }
  if(g.phase==='bidding'){
-  const strong=g.hands[id].filter(c=>c.type==='wizard'||(c.type==='number'&&(c.value>=11||c.suit===g.trump&&c.value>=9))).length;
-  return {type:'bid',count:Math.max(0,Math.min(g.round,strong+(level==='easy'?rand(3)-1:level==='hard'?0:rand(2)-1)))};
+  const bid=estimateBid(g,id);
+  return {type:'bid',count:level==='easy'?Math.max(0,Math.min(g.round,bid+rand(3)-1)):bid};
  }
- const cards=g.hands[id].filter(c=>legal(g,id).includes(c.id));
- const power=c=>c.type==='wizard'?100:c.type==='jester'?-10:c.value+(c.suit===g.trump?20:0);
- cards.sort((a,b)=>power(a)-power(b));
- const need=g.bids[id]-g.tricks[id];
- return {type:'play',cardId:(level==='easy'?cards[rand(cards.length)]:need>0?cards.at(-1):cards[0]).id};
+ const allowed=new Set(legal(g,id));
+ const cards=hand.filter(c=>allowed.has(c.id));
+ if(level==='easy')return {type:'play',cardId:cards[rand(cards.length)].id};
+ const need=Math.max(0,(g.bids[id]||0)-(g.tricks[id]||0));
+ const tricksLeft=hand.length;
+ const trick=g.trick;
+ const lead=g.lead;
+ const current=trick.length?currentWinner(trick,lead,g.trump):null;
+ const playersAfter=g.players.length-trick.length-1;
+ const options=cards.map(card=>{
+  const trial=[...trick,{id,card}];
+  const trialLead=lead||(card.type==='number'?card.suit:null);
+  const winsNow=currentWinner(trial,trialLead,g.trump)===id;
+  const strength=cardStrength(card,g,hand);
+  let chance=winsNow?Math.pow(strength,playersAfter/Math.max(1,g.players.length-1)):0;
+  if(!trick.length)chance=strength;
+  if(card.type==='wizard'&&trick.some(t=>t.card.type==='wizard'))chance=0;
+  if(card.type==='jester'&&trick.length&&current!==id)chance=0;
+  const reserve=card.type==='wizard'?1.6:card.type==='number'?(card.suit===g.trump?.5:0)+card.value/18:0;
+  const target=Math.min(1,need/Math.max(1,tricksLeft));
+  // When ahead of the bid, dump dangerous high cards without winning.
+  const score=need===0
+   ?-chance*12+reserve*.65+(card.type==='wizard'?-2:0)
+   :-(chance-target)**2*8-reserve*.28+(winsNow&&need>=tricksLeft?2:0);
+  return {card,score,chance};
+ });
+ options.sort((a,b)=>b.score-a.score||a.card.id.localeCompare(b.card.id));
+ return {type:'play',cardId:options[0].card.id};
 }
 module.exports={create,act,restart,view,botAction};
