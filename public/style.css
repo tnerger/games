@@ -422,3 +422,17 @@ button.rommy-split{align-self:center;flex:0 0 auto;width:22px;min-height:34px;he
 button.rommy-split:hover,button.rommy-split:focus-visible{background:#6477a4;opacity:1;color:#fff}
 button.rommy-split:disabled{opacity:.25}
 @media(hover:none){button.rommy-split{opacity:1;min-width:24px}}
+
+
+/* RommyCup: Erstauslage und neue Tischsteine */
+.rommy-opening-counter{padding:12px 14px;margin:12px 0 16px;background:#222c4c;border:1px solid #607298;border-radius:12px}
+.rommy-opening-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-size:.92rem}
+.rommy-opening-top strong{font-size:1.08rem;color:#ffce78}
+.rommy-opening-track{height:9px;margin-top:10px;border-radius:10px;background:#131a2f;overflow:hidden}
+#rommy-opening-progress{height:100%;width:0;background:#f6b83d;border-radius:10px;transition:width .22s ease}
+.rommy-opening-counter.complete #rommy-opening-progress{background:#4cda94}
+.rommy-opening-counter.complete .rommy-opening-top strong{color:#4cda94}
+#rommy-opening-warning{display:block;color:#ffad9e;margin-top:6px}
+#rommy-opening-warning:empty{display:none}
+button.rommy-recently-placed{border:3px solid #161616;box-shadow:0 0 0 2px #f4d47b,0 3px 3px #0006}
+@media(prefers-reduced-motion:reduce){#rommy-opening-progress{transition:none}}
