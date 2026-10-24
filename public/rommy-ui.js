@@ -1,7 +1,8 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
- let room=null,game=null,rows=[],rack=[],active=0,signature='';
+ let room=null,game=null,rows=[],rack=[],active=0,signature='',sortMode='color';
+ const colorOrder={red:0,blue:1,black:2,orange:3,joker:4};
  const labels={red:'Rot',blue:'Blau',black:'Schwarz',orange:'Orange',joker:'Joker'};
  const send=(action)=>emit('game:action',action);
  const tile=t=>{
@@ -10,7 +11,17 @@
   return b;
  };
  const lookup=()=>new Map([...game.hand,...game.table.flat()].map(t=>[t.id,t]));
- function reset(){if(!game)return;rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);active=rows.length;render();}
+ function sortRack(){
+  if(!game)return;
+  const map=lookup();
+  rack.sort((a,b)=>{
+   const x=map.get(a),y=map.get(b);
+   if(!x||!y)return 0;
+   if(sortMode==='color')return colorOrder[x.color]-colorOrder[y.color]||x.value-y.value||x.id.localeCompare(y.id);
+   return (x.color==='joker'?14:x.value)-(y.color==='joker'?14:y.value)||colorOrder[x.color]-colorOrder[y.color]||x.id.localeCompare(y.id);
+  });
+ }
+ function reset(){if(!game)return;rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);sortRack();active=rows.length;render();}
  function render(){
   if(!game)return;
   const myTurn=game.turn===identity?.id&&!game.finished;
@@ -25,12 +36,14 @@
    head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=index;render();};line.append(head);
    const tiles=node('div','rommy-row-tiles');
    ids.forEach((id,pos)=>{const t=map.get(id);if(!t)return;const b=tile(t);b.disabled=!myTurn;b.onclick=()=>{
-    rows[index].splice(pos,1);rack.push(id);render();
+    rows[index].splice(pos,1);rack.push(id);sortRack();render();
    };tiles.append(b);});
    if(!ids.length)tiles.append(node('span','rommy-empty','Hier Steine ablegen'));
    line.append(tiles);table.append(line);
   });
   const add=$('rommy-add-row');add.disabled=!myTurn;add.onclick=()=>{rows.push([]);active=rows.length-1;render();};
+  $('rommy-sort-color').setAttribute('aria-pressed',String(sortMode==='color'));
+  $('rommy-sort-value').setAttribute('aria-pressed',String(sortMode==='value'));
   const hand=$('rommy-hand');hand.replaceChildren();
   for(const id of rack){const t=map.get(id);if(!t)continue;const b=tile(t);b.disabled=!myTurn;b.onclick=()=>{
    if(active>=rows.length){rows.push([]);active=rows.length-1;}
@@ -46,6 +59,8 @@
  $('start-rommy').onclick=()=>emit('game:start',{});
  $('rommy-restart').onclick=()=>emit('game:restart',{});
  $('rommy-reset').onclick=reset;
+ $('rommy-sort-color').onclick=()=>{sortMode='color';sortRack();render();};
+ $('rommy-sort-value').onclick=()=>{sortMode='value';sortRack();render();};
  $('rommy-submit').onclick=()=>{
   const groups=rows.filter(r=>r.length);
   if(rows.some(r=>r.length>0&&r.length<3))return status('Jede ausgelegte Gruppe benötigt mindestens drei Steine.');
