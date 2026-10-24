@@ -76,14 +76,106 @@ function act(g,id,a){
  else {g.turn=(g.turn+1)%g.players.length;g.turnCount=(g.turnCount||0)+1;beginTurn(g);}
 }
 function view(g,id){return {game:'rommy',players:g.players.map(p=>({id:p,count:g.hands[p].length,opened:g.opened[p]})),hand:g.hands[id].map(t=>({...t})),table:g.table.map(row=>row.map(t=>({...t}))),turn:g.players[g.turn],bagCount:g.bag.length,opened:g.opened[id],finished:g.finished,winner:g.winner,events:g.events,revision:g.revision,latestDraw:g.latestDraw?.player===id?g.latestDraw:null,newTableTileIds:Object.entries(g.newTableTiles||{}).filter(([,turn])=>(g.turnCount||0)-turn<g.players.length).map(([tileId])=>tileId)};}
-function botAction(g,id){
- const hand=g.hands[id];
- // Basic bot: find one complete group or run in its rack.
- for(let i=0;i<hand.length;i++)for(let j=i+1;j<hand.length;j++)for(let k=j+1;k<hand.length;k++){
-  const row=[hand[i],hand[j],hand[k]];
-  const variants=[row,[row[0],row[2],row[1]],[row[1],row[0],row[2]],[row[1],row[2],row[0]],[row[2],row[0],row[1]],[row[2],row[1],row[0]]];
-  for(const v of variants){const points=meldValue(v);if(points!==null&&(g.opened[id]||points>=30))return {type:'place',groups:[...g.table.map(r=>r.map(t=>t.id)),v.map(t=>t.id)]};}
+
+function candidates(pool,limit=6500){
+ const out=[],seen=new Set();
+ const add=row=>{
+  const ids=row.map(t=>t.id),key=ids.join(',');
+  if(!seen.has(key)&&meldValue(row)!==null){seen.add(key);out.push({ids,tiles:row,score:meldValue(row)});}
+ };
+ const jokers=pool.filter(t=>t.color==='joker');
+ const normal=pool.filter(t=>t.color!=='joker');
+ const byColor=Object.fromEntries(COLORS.map(c=>[c,normal.filter(t=>t.color===c)]));
+ const byNumber=new Map();
+ for(const t of normal){if(!byNumber.has(t.value))byNumber.set(t.value,[]);byNumber.get(t.value).push(t);}
+ function choose(arr,count,cb,selected=[],offset=0){
+  if(!count){cb(selected);return;}
+  for(let i=offset;i<=arr.length-count;i++)choose(arr,count-1,cb,[...selected,arr[i]],i+1);
  }
- return {type:'pass'};
+ // Number groups, with distinct colours and up to two jokers.
+ for(let value=1;value<=13;value++){
+  const stones=byNumber.get(value)||[];
+  for(let n=3;n<=4;n++)for(let j=0;j<=Math.min(jokers.length,n-1);j++)
+   choose(stones,n-j,part=>{
+    if(new Set(part.map(t=>t.color)).size!==part.length)return;
+    choose(jokers,j,js=>add([...part,...js]));
+   });
+ }
+ // Runs: choose a physical copy for each value, optionally replace a slot by a joker.
+ for(const color of COLORS){
+  const values=new Map();
+  for(const t of byColor[color]){if(!values.has(t.value))values.set(t.value,[]);values.get(t.value).push(t);}
+  for(let first=1;first<=11;first++)for(let last=first+2;last<=13;last++){
+   const slots=Array.from({length:last-first+1},(_,i)=>values.get(first+i)||[]);
+   const build=(i,row,usedJokers)=>{
+    if(out.length>=limit)return;
+    if(i===slots.length){add(row);return;}
+    for(const t of slots[i])build(i+1,[...row,t],usedJokers);
+    if(usedJokers<jokers.length)for(let j=0;j<jokers.length;j++){
+     const joker=jokers[j];if(row.includes(joker))continue;
+     build(i+1,[...row,joker],usedJokers+1);
+    }
+   };
+   build(0,[],0);
+  }
+ }
+ return out;
+}
+function botAction(g,id){
+ const hand=g.hands[id],base=g.table.map(row=>row.map(t=>t.id));
+ const owned=new Set(hand.map(t=>t.id));
+ const plainHand=hand.filter(t=>t.color!=='joker');
+ const rank=ids=>ids.filter(t=>owned.has(t)).length;
+ const handMelds=candidates(hand).filter(c=>c.ids.every(t=>owned.has(t)));
+ // Combine multiple melds for opening 30 and for laying several groups in one turn.
+ const bestHand={score:-1,rows:[]};
+ function handSearch(available,chosen,points,depth){
+  const used=chosen.flatMap(r=>r.ids);
+  const score=used.length*100+points;
+  if((g.opened[id]||points>=30)&&score>bestHand.score){
+   bestHand.score=score;bestHand.rows=chosen.map(r=>r.ids);
+  }
+  if(depth>=5||!available.length)return;
+  const usedSet=new Set(used);
+  const options=available.filter(r=>r.ids.every(t=>!usedSet.has(t))).sort((a,b)=>b.ids.length-a.ids.length||b.score-a.score).slice(0,55);
+  for(const row of options)handSearch(options.filter(r=>r!==row),[...chosen,row],points+row.score,depth+1);
+ }
+ handSearch(handMelds,[],0,0);
+ if(!g.opened[id])return bestHand.score<0?{type:'pass'}:{type:'place',groups:[...base,...bestHand.rows]};
+ let best={count:bestHand.rows.flat().length,groups:[...base,...bestHand.rows]};
+ // Rebuild a single existing table group: extend, reorder, replace joker,
+ // or split it into multiple valid groups using hand tiles.
+ for(let i=0;i<g.table.length;i++){
+  const old=g.table[i],oldIds=new Set(old.map(t=>t.id));
+  const pool=[...old,...hand];
+  const options=candidates(pool).filter(c=>c.ids.some(t=>oldIds.has(t)));
+  const byOld=new Map();
+  for(const row of options)for(const tileId of row.ids)if(oldIds.has(tileId)){
+   if(!byOld.has(tileId))byOld.set(tileId,[]);
+   byOld.get(tileId).push(row);
+  }
+  let nodes=0;
+  function search(remaining,used,chosen){
+   if(++nodes>12000)return;
+   if(!remaining.size){
+    const handUsed=chosen.flatMap(c=>c.ids).filter(t=>owned.has(t));
+    const extra=handMelds.filter(c=>c.ids.every(t=>!used.has(t))).sort((a,b)=>b.ids.length-a.ids.length);
+    const extras=[],taken=new Set(used);
+    for(const row of extra)if(row.ids.every(t=>!taken.has(t))){extras.push(row.ids);row.ids.forEach(t=>taken.add(t));}
+    const count=handUsed.length+extras.flat().length;
+    if(count>best.count){best={count,groups:[...base.filter((_,j)=>j!==i),...chosen.map(c=>c.ids),...extras]};}
+    return;
+   }
+   const next=[...remaining].sort((a,b)=>(byOld.get(a)?.length||0)-(byOld.get(b)?.length||0))[0];
+   const opts=(byOld.get(next)||[]).filter(c=>c.ids.every(t=>!used.has(t))).sort((a,b)=>rank(b.ids)-rank(a.ids));
+   for(const row of opts.slice(0,90)){
+    const nextRemaining=new Set(remaining);
+    row.ids.forEach(t=>nextRemaining.delete(t));
+    search(nextRemaining,new Set([...used,...row.ids]),[...chosen,row]);
+   }
+  }
+  search(new Set(oldIds),new Set(),[]);
+ }
+ return best.count?{type:'place',groups:best.groups}:{type:'pass'};
 }
 module.exports={create,act,view,botAction,meldValue};
