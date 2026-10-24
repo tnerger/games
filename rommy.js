@@ -129,15 +129,17 @@ function botAction(g,id){
  const handMelds=candidates(hand).filter(c=>c.ids.every(t=>owned.has(t)));
  // Combine multiple melds for opening 30 and for laying several groups in one turn.
  const bestHand={score:-1,rows:[]};
+ let handNodes=0;
  function handSearch(available,chosen,points,depth){
+  if(++handNodes>1800)return;
   const used=chosen.flatMap(r=>r.ids);
   const score=used.length*100+points;
   if((g.opened[id]||points>=30)&&score>bestHand.score){
    bestHand.score=score;bestHand.rows=chosen.map(r=>r.ids);
   }
-  if(depth>=5||!available.length)return;
+  if(depth>=4||!available.length)return;
   const usedSet=new Set(used);
-  const options=available.filter(r=>r.ids.every(t=>!usedSet.has(t))).sort((a,b)=>b.ids.length-a.ids.length||b.score-a.score).slice(0,55);
+  const options=available.filter(r=>r.ids.every(t=>!usedSet.has(t))).sort((a,b)=>b.ids.length-a.ids.length||b.score-a.score).slice(0,24);
   for(const row of options)handSearch(options.filter(r=>r!==row),[...chosen,row],points+row.score,depth+1);
  }
  handSearch(handMelds,[],0,0);
