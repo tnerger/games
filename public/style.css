@@ -278,3 +278,10 @@
 @keyframes uno-trophy{from{transform:scale(1) rotate(-5deg)}to{transform:scale(1.12) rotate(5deg)}}
 @media(min-width:700px){.uno-toolbar>button{flex:0 1 auto;min-width:180px;max-width:290px}}
 @media(prefers-reduced-motion:reduce){#uno-top .uno-card-slide-in,#uno-top .uno-penalty-pulse,.uno-result-trophy{animation:none!important}}
+
+/* Wizard trick announcement floats over the table without layout shifts */
+#wizard-table-wrap{position:relative;isolation:isolate}
+#wizard-trick-announcement{position:absolute;z-index:10;top:50%;left:50%;width:max-content;max-width:calc(100% - 20px);min-height:0;margin:0;padding:0;transform:translate(-50%,-50%);pointer-events:none;opacity:0}
+#wizard-trick-announcement.wizard-trick-win{opacity:1;margin:0;padding:12px 18px;animation:wizard-trick-toast 2.05s ease-in-out both}
+@keyframes wizard-trick-toast{0%{opacity:0;transform:translate(-50%,-35%) scale(.92)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}25%,78%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-65%) scale(.98)}}
+@media(prefers-reduced-motion:reduce){#wizard-trick-announcement.wizard-trick-win{animation:none!important;opacity:1;transform:translate(-50%,-50%)}}
