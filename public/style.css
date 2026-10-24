@@ -436,3 +436,9 @@ button.rommy-split:disabled{opacity:.25}
 #rommy-opening-warning:empty{display:none}
 button.rommy-recently-placed{border:3px solid #161616;box-shadow:0 0 0 2px #f4d47b,0 3px 3px #0006}
 @media(prefers-reduced-motion:reduce){#rommy-opening-progress{transition:none}}
+
+
+/* RommyCup: Scheren erst nach Aktivierung einblenden */
+button.rommy-split-toggle{display:inline-flex;align-items:center;justify-content:center;width:35px;min-height:30px;height:30px;margin:0 0 8px 7px;padding:0;border:1px solid #6577a3;border-radius:8px;background:#354364;color:#fff;font-size:1rem;vertical-align:middle}
+button.rommy-split-toggle.active{background:#f3c567;color:#22253b;border-color:#f3c567}
+button.rommy-split-toggle:disabled{opacity:.35}
