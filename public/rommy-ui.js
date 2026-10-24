@@ -49,6 +49,7 @@
    if(active>=rows.length){rows.push([]);active=rows.length-1;}
    rows[active].push(id);rack=rack.filter(x=>x!==id);render();
   };hand.append(b);}
+  animatedDraw='';
   const moved=rack.length!==game.hand.length||rack.some(id=>!game.hand.some(t=>t.id===id))||JSON.stringify(rows)!==JSON.stringify(game.table.map(r=>r.map(t=>t.id)));
   $('rommy-reset').disabled=!myTurn||!moved;
   $('rommy-submit').disabled=!myTurn||!moved;
