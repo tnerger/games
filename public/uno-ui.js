@@ -21,7 +21,7 @@ let roomDetailsExpanded=false;
 let shownUnoResult=null, currentTopForAnimation=null;
 $('uno-result-close').onclick=()=>modal('uno-result-overlay',false);
 $('uno-result-reopen').onclick=()=>modal('uno-result-overlay',true);
-const limits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6},elfer:{min:2,max:6}};
+const limits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6},elfer:{min:2,max:6},rommy:{min:2,max:4}};
 const modal=(id,open)=>{$(id).classList.toggle('hidden',!open);};
 $('bot-open').onclick=()=>{modal('bot-dialog',true);$('bot-name').focus();};
 $('bot-cancel').onclick=()=>modal('bot-dialog',false);
@@ -42,7 +42,7 @@ function ruleOptions(room){
  const limit=limits[room.selectedGame]||limits.uno;
  const missing=Math.max(0,limit.min-room.players.length);
  $('bot-count').textContent='('+room.players.filter(p=>p.bot).length+')';
- $('player-limit-info').textContent='Für '+(room.selectedGame==='wizard'?'Wizard':room.selectedGame==='skyjo'?'Skyjo':room.selectedGame==='elfer'?'11er Raus':'UNO')+': '+limit.min+'–'+limit.max+' Spieler · aktuell '+room.players.length+(missing?' · noch '+missing+' benötigt':' · startbereit');
+ $('player-limit-info').textContent='Für '+(room.selectedGame==='wizard'?'Wizard':room.selectedGame==='skyjo'?'Skyjo':room.selectedGame==='elfer'?'11er Raus':room.selectedGame==='rommy'?'RommyCup':'UNO')+': '+limit.min+'–'+limit.max+' Spieler · aktuell '+room.players.length+(missing?' · noch '+missing+' benötigt':' · startbereit');
  $('bot-open').disabled=room.players.length>=limit.max;
  const bots=$('bot-list');bots.replaceChildren();
  for(const p of room.players.filter(p=>p.bot)){const line=make('div',undefined,'bot-entry');line.append(make('span',playerName(p)));if(isHost)line.append(button('Entfernen',()=>send('bot:remove',p.id),'secondary'));bots.append(line);}
@@ -59,7 +59,7 @@ function ruleOptions(room){
  }
  $('save-rules').classList.toggle('hidden',room.host!==identity?.id);
  $('uno-rules-open').classList.toggle('hidden',room.host!==identity?.id);
- for(const id of ['start-uno','start-skyjo','start-wizard','start-elfer'])if($(id))$(id).disabled=missing>0;
+ for(const id of ['start-uno','start-skyjo','start-wizard','start-elfer','start-rommy'])if($(id))$(id).disabled=missing>0;
  $('start-uno').classList.toggle('hidden',room.host!==identity?.id);
  const unoSelected=room.selectedGame==='uno';
  $('uno-setup').classList.toggle('hidden',room.gameStarted||!unoSelected);
@@ -116,7 +116,7 @@ $('uno-toggle-log').onclick=()=>{const log=$('uno-log');const open=log.classList
 function showScores(){if(!roomInfo)return;const target=$('uno-scoreboard');target.replaceChildren(make('h3','Punktetafel'));const table=make('table');const header=make('tr');for(const x of ['Spieler','Siege','Punkte'])header.append(make('th',x));table.append(header);for(const p of roomInfo.players){const row=make('tr');const score=roomInfo.scores?.[p.id]||{wins:0,points:0};for(const v of [playerName(p),score.wins,score.points])row.append(make('td',String(v)));table.append(row);}target.append(table);}
 
 socket.on('game:state',state=>{
- if(state.game==='skyjo'||state.game==='wizard'||state.game==='elfer')return;
+ if(state.game==='skyjo'||state.game==='wizard'||state.game==='elfer'||state.game==='rommy')return;
  const oldIds=new Set((current?.hand||[]).map(c=>c.id));
  const freshIds=new Set(current?state.hand.filter(c=>!oldIds.has(c.id)).map(c=>c.id):[]);
  const events=state.events||[];
