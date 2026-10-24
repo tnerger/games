@@ -176,3 +176,32 @@
 @keyframes skyjo-discard-in{0%{opacity:.95;transform:translate(95px,-32px) rotate(16deg) scale(.93)}100%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}}
 @keyframes skyjo-discard-out{0%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}100%{opacity:0;transform:translate(105px,-40px) rotate(16deg) scale(.9)}}
 @media(prefers-reduced-motion:reduce){.skyjo-discard-slide-in,.skyjo-discard-slide-out{animation-duration:.01ms!important}}
+
+/* Mobile-first lobby: compact setup sections and focused dialogs */
+.setup-details{margin:14px 0;padding:14px;border:1px solid #4b587c;border-radius:14px;background:#1d2746}
+.setup-details>summary{cursor:pointer;font-weight:750;font-size:1.05rem;list-style-position:inside;padding:4px 0}
+.setup-details>p{font-size:.85rem;margin:10px 0}
+.setup-details #bot-list:empty{display:none}
+.setup-details #bot-open{margin-top:12px}
+.setup-overlay{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px;background:#070d20dd;backdrop-filter:blur(5px)}
+.setup-dialog{width:min(100%,470px);max-height:92dvh;overflow:auto;background:#252f52;border:1px solid #8594c2;border-radius:18px;padding:20px;box-shadow:0 20px 70px #000b}
+.setup-dialog h2{margin:0 0 14px}
+.setup-dialog label{margin:14px 0 7px}
+.setup-dialog select{width:100%;min-height:52px;border-radius:10px;background:#171c36;color:white;border:2px solid #6e789f;padding:10px;font:inherit}
+.setup-dialog-actions{display:flex;gap:10px;margin-top:20px}
+.setup-dialog-actions button{flex:1;min-width:0;margin:0}
+#uno-setup>p,#skyjo-setup>p,#wizard-setup>p{font-size:.9rem}
+#uno-rules-dialog .rule-option{padding:5px 0}
+#uno-rules-dialog .rule-option p{font-size:.82rem;margin:4px 0 8px}
+#uno-rules-dialog .rule-option label{margin:6px 0}
+@media(min-width:900px){
+ .shell{max-width:1160px;padding:30px 32px 60px}
+ .panel{padding:30px 34px}
+ #skyjo-players{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+ #skyjo-players>h3{grid-column:1/-1;margin-bottom:0}
+ #skyjo-players .skyjo-opponent{margin:0}
+ #skyjo-players .skyjo-opponent-grid{max-width:none}
+ #skyjo-players .skyjo-opponent-grid .skyjo-card,#skyjo-players .skyjo-opponent-grid .skyjo-empty{min-height:62px}
+ #skyjo-hand{max-width:460px}
+ #uno-hand{justify-content:center}
+}
