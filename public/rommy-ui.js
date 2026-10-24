@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
- let room=null,game=null,rows=[],rack=[],active=0,signature='',sortMode='color';
+ let room=null,game=null,rows=[],rack=[],active=0,signature='',sortMode='color',animatedDraw='';
  const colorOrder={red:0,blue:1,black:2,orange:3,joker:4};
  const labels={red:'Rot',blue:'Blau',black:'Schwarz',orange:'Orange',joker:'Joker'};
  const send=(action)=>emit('game:action',action);
@@ -45,14 +45,14 @@
   $('rommy-sort-color').setAttribute('aria-pressed',String(sortMode==='color'));
   $('rommy-sort-value').setAttribute('aria-pressed',String(sortMode==='value'));
   const hand=$('rommy-hand');hand.replaceChildren();
-  for(const id of rack){const t=map.get(id);if(!t)continue;const b=tile(t);b.disabled=!myTurn;b.onclick=()=>{
+  for(const id of rack){const t=map.get(id);if(!t)continue;const b=tile(t);if(game.latestDraw?.tileId===id){b.classList.add('rommy-new-tile');if(animatedDraw===id)b.classList.add('rommy-tile-arriving');}b.disabled=!myTurn;b.onclick=()=>{
    if(active>=rows.length){rows.push([]);active=rows.length-1;}
    rows[active].push(id);rack=rack.filter(x=>x!==id);render();
   };hand.append(b);}
   const moved=rack.length!==game.hand.length||rack.some(id=>!game.hand.some(t=>t.id===id))||JSON.stringify(rows)!==JSON.stringify(game.table.map(r=>r.map(t=>t.id)));
   $('rommy-reset').disabled=!myTurn||!moved;
   $('rommy-submit').disabled=!myTurn||!moved;
-  $('rommy-draw').disabled=!myTurn||!game.bagCount||moved;
+  $('rommy-draw').disabled=!myTurn||moved;
   $('rommy-restart').classList.toggle('hidden',!game.finished||room?.host!==identity?.id);
   const last=game.events.at(-1);$('rommy-last').textContent=last?last.text:'';
  }
@@ -66,7 +66,7 @@
   if(rows.some(r=>r.length>0&&r.length<3))return status('Jede ausgelegte Gruppe benötigt mindestens drei Steine.');
   emit('game:action',{type:'place',groups},()=>{});
  };
- $('rommy-draw').onclick=()=>send({type:'draw'});
+ $('rommy-draw').onclick=()=>send({type:'pass'});
  socket.on('room',r=>{
   room=r;
   const selected=r.selectedGame||'uno';
@@ -82,7 +82,7 @@
   if(g.game!=='rommy')return;
   game=g;
   const sig=g.revision+':'+g.turn+':'+g.finished;
-  if(sig!==signature){signature=sig;reset();}else render();
+  if(sig!==signature){animatedDraw=g.latestDraw?.tileId||'';signature=sig;reset();}else render();
   $('rommy-play').classList.remove('hidden');
   for(const id of ['uno-play','skyjo-play','wizard-play','elfer-play'])$(id).classList.add('hidden');
  });
