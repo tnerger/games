@@ -38,13 +38,14 @@ function draw(g,id,n){let count=0;for(let i=0;i<n;i++){if(!g.deck.length){const 
 function canPlay(g,c){if(g.pending)return g.rules.stacking&&g.pendingType==='draw2'&&c.value==='draw2';return c.color==='wild'||c.color===g.color||c.value===g.discard.at(-1).value;}
 function view(g,id){
  const p=g.players[g.turn];
- return {players:g.players.map(pid=>({id:pid,count:g.hands[pid].length})),hand:g.hands[id]||[],top:g.discard.at(-1),color:g.color,turn:p,direction:g.direction,pending:g.pending,awaitingColor:g.awaitingColor,awaitingSwap:g.awaitingSwap,awaitingChallenge:g.awaitingChallenge,finished:g.finished,winner:g.winner,rules:g.rules,descriptions,log:g.log,events:g.events||[],revision:g.revision,canPlay:(g.hands[id]||[]).filter(c=>id===p&&!g.awaitingColor&&!g.awaitingSwap&&!g.awaitingChallenge&&canPlay(g,c)).map(c=>c.id)};
+ return {players:g.players.map(pid=>({id:pid,count:g.hands[pid].length})),hand:g.hands[id]||[],top:g.discard.at(-1),color:g.color,turn:p,direction:g.direction,pending:g.pending,autoPenalty:!!g.autoPenalty,awaitingColor:g.awaitingColor,awaitingSwap:g.awaitingSwap,awaitingChallenge:g.awaitingChallenge,finished:g.finished,winner:g.winner,rules:g.rules,descriptions,log:g.log,events:g.events||[],revision:g.revision,canPlay:(g.hands[id]||[]).filter(c=>id===p&&!g.awaitingColor&&!g.awaitingSwap&&!g.awaitingChallenge&&canPlay(g,c)).map(c=>c.id)};
 }
 function act(g,id,a){
  g.revision++;
  if(g.finished)throw Error('Die Runde ist beendet.');
  if(g.players[g.turn]!==id)throw Error('Du bist nicht am Zug.');
  if(!a||typeof a!=='object')throw Error('Ungültige Aktion.');
+ if(g.autoPenalty&&a.type!=='draw')throw Error('Strafkarten werden automatisch gezogen.');
  if(g.awaitingChallenge){
   if(a.type!=='challenge'&&a.type!=='accept')throw Error('Bitte +4 annehmen oder anzweifeln.');
   const count=a.type==='challenge'?(g.wild4Illegal?0:6):4;
@@ -67,6 +68,7 @@ function act(g,id,a){
  }
  if(a.type==='draw'){
   if(g.pending){
+   g.autoPenalty=false;
    draw(g,id,g.pending);g.log.push('Strafkarten gezogen: '+g.pending+(g.rules.penaltySkip?' – Zug ausgesetzt.':' – Spieler bleibt am Zug.'));g.pending=0;g.pendingType=null;
    if(g.finishAfterPenalty){g.finished=true;g.winner=g.finishAfterPenalty;g.finishAfterPenalty=null;g.log.push('Spiel beendet!');return;}
    if(g.rules.penaltySkip)g.turn=next(g);return;
@@ -112,7 +114,7 @@ function act(g,id,a){
  if(g.awaitingSwap)return;
  g.turn=next(g);
  if(c.value==='wild4'&&g.rules.challenge){g.awaitingChallenge=true;return;}
- if(g.pending&&!g.rules.stacking){draw(g,g.players[g.turn],g.pending);g.log.push('Strafkarten gezogen: '+g.pending+(g.rules.penaltySkip?' – Zug ausgesetzt.':' – Spieler bleibt am Zug.'));if(g.rules.penaltySkip)g.turn=next(g);g.pending=0;g.pendingType=null;}
+ if(g.pending&&!g.rules.stacking&&!g.awaitingChallenge){g.autoPenalty=true;}
  if(g.finishAfterPenalty&&!g.pending&&!g.awaitingChallenge){g.finished=true;g.winner=g.finishAfterPenalty;g.finishAfterPenalty=null;g.log.push('Spiel beendet!');}
 }
 module.exports={create,view,act,defaults,descriptions};
