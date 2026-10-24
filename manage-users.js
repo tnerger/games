@@ -1,24 +1,34 @@
 'use strict';
 const accounts = require('./accounts');
 const readline = require('node:readline/promises');
-const fs = require('node:fs');
 async function main() {
   const [command, username] = process.argv.slice(2);
   const rl = readline.createInterface({input:process.stdin,output:process.stdout});
   async function secret(question) {
-    // Use the controlling terminal rather than stdin: SSH sessions may redirect stdin.
-    let tty;
-    try { tty=fs.openSync('/dev/tty','r+'); }
-    catch { throw Error('Kein interaktives Terminal verfügbar.'); }
-    const input=fs.createReadStream(null,{fd:tty,autoClose:false});
-    const output=fs.createWriteStream(null,{fd:tty,autoClose:false});
-    const terminal=readline.createInterface({input,output,terminal:true});
-    terminal._writeToOutput=function(value) {
-      if (value.startsWith(question)) this.output.write(value);
-      else if (value.includes('\\n') || value.includes('\\r')) this.output.write('\\n');
-    };
-    try { return await terminal.question(question); }
-    finally { terminal.close();input.destroy();output.destroy();fs.closeSync(tty); }
+    if (!process.stdin.isTTY) throw Error('Bitte in einer interaktiven SSH-Sitzung ausführen.');
+    const input=process.stdin, output=process.stdout;
+    output.write(question);
+    const wasRaw=input.isRaw;
+    input.setRawMode(true);
+    input.resume();
+    return await new Promise((resolve,reject)=>{
+      let value='';
+      function finish(err) {
+        input.removeListener('data',onData);
+        input.setRawMode(!!wasRaw);
+        output.write('\\n');
+        if(err)reject(err);else resolve(value);
+      }
+      function onData(chunk) {
+        for(const c of chunk.toString('utf8')) {
+          if(c==='\\r'||c==='\\n')return finish();
+          if(c==='\\u0003')return finish(Error('Abgebrochen.'));
+          if(c==='\\u007f'||c==='\\b'){value=value.slice(0,-1);continue;}
+          if(c>=' '&&value.length<256)value+=c;
+        }
+      }
+      input.on('data',onData);
+    });
   }
   try {
     if (command === 'create-admin' || command === 'create-user') {
