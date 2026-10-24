@@ -221,7 +221,7 @@ function scheduleBot(r){
   botTimers.set(r.code,timer);return;
  }
  if(!player?.bot||botTimers.has(r.code))return;
- const delay=revealing?450:r.gameType==='wizard'?850:r.gameType==='skyjo'&&['replace','flip'].includes(r.game.phase)?650:2400;
+ const delay=revealing?450:r.gameType==='wizard'?850:r.gameType==='skyjo'&&['replace','flip'].includes(r.game.phase)?650:r.gameType==='rommy'?3400:2400;
  const game=r.game;
  const timer=setTimeout(()=>{
   botTimers.delete(r.code);
