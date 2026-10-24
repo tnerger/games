@@ -5,10 +5,10 @@ const rommy=require('../rommy');
 const t=(id,color,value)=>({id,color,value});
 test('RommyCup deals 14 tiles per player and 106 unique tiles',()=>{
  const g=rommy.create(['a','b','c']);
- assert.equal(g.hands.a.length,14);assert.equal(g.hands.b.length,14);
- assert.equal(g.bag.length,106-42);
+ assert.equal(g.hands.a.length,15);assert.equal(g.hands.b.length,14);
+ assert.equal(g.bag.length,106-43);
  assert.equal(new Set([...g.bag,...Object.values(g.hands).flat()].map(x=>x.id)).size,106);
- assert.equal(rommy.view(g,'a').hand.length,14);
+ assert.equal(rommy.view(g,'a').hand.length,15);
  assert.equal(rommy.view(g,'b').hand.length,14);
 });
 test('Groups and ascending runs including jokers',()=>{
@@ -32,4 +32,16 @@ test('Cannot steal table tiles or play another user hand',()=>{
  assert.throws(()=>rommy.act(g,'a',{type:'place',groups:[['a1','a2','a3']]}),/Tisch/);
  assert.throws(()=>rommy.act(g,'a',{type:'place',groups:[['x','y','a1']]}),/Tisch/);
  assert.throws(()=>rommy.act(g,'a',{type:'place',groups:[['x','y','z'],['a1','a2','bad']]}));
+});
+
+test('A new tile is drawn at the beginning of every turn',()=>{
+ const g=rommy.create(['a','b']);
+ assert.equal(g.latestDraw.player,'a');
+ assert.ok(g.hands.a.some(t=>t.id===g.latestDraw.tileId));
+ assert.throws(()=>rommy.act(g,'a',{type:'draw'}),/automatisch/);
+ rommy.act(g,'a',{type:'pass'});
+ assert.equal(g.turn,1);
+ assert.equal(g.hands.b.length,15);
+ assert.equal(g.latestDraw.player,'b');
+ assert.equal(g.bag.length,106-44);
 });
