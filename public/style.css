@@ -205,3 +205,39 @@
  #skyjo-hand{max-width:460px}
  #uno-hand{justify-content:center}
 }
+
+/* Skyjo layout: mobile first, with genuine side-by-side desktop playfield */
+#skyjo-board{display:flex;flex-direction:column;gap:12px}
+#skyjo-center{order:0;min-width:0}
+#skyjo-opponents-left{order:1}
+#skyjo-opponents-right{order:2}
+.skyjo-opponents-column{min-width:0}
+.skyjo-opponents-column:empty{display:none}
+@media(min-width:900px){
+ #skyjo-board{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,430px) minmax(0,1fr);gap:16px;align-items:start;margin-top:16px}
+ #skyjo-center{grid-column:2;grid-row:1;order:unset;min-width:0;padding:12px;border-radius:16px;background:#1b2343}
+ #skyjo-opponents-left{grid-column:1;grid-row:1;order:unset;display:flex;flex-direction:column;gap:12px}
+ #skyjo-opponents-right{grid-column:3;grid-row:1;order:unset;display:flex;flex-direction:column;gap:12px}
+ #skyjo-board .skyjo-opponent{margin:0;padding:10px}
+ #skyjo-board .skyjo-opponent-grid{max-width:none;margin:10px 0 0;gap:4px}
+ #skyjo-board .skyjo-opponent-grid .skyjo-card,#skyjo-board .skyjo-opponent-grid .skyjo-empty{min-height:54px;font-size:1.1rem;padding:3px}
+ #skyjo-board #skyjo-hand{width:100%;max-width:390px;margin:18px auto;gap:7px}
+ #skyjo-board #skyjo-hand .skyjo-card,#skyjo-board #skyjo-hand .skyjo-empty{min-height:82px}
+ #skyjo-board #skyjo-piles{margin:12px auto 18px}
+ #skyjo-play>h2,#skyjo-turn,#skyjo-last{max-width:100%}
+ #skyjo-play>#skyjo-restart,#skyjo-play>#skyjo-result-reopen,#skyjo-play>#skyjo-log-toggle,#game-switch,#leave{width:auto;min-width:180px;max-width:340px}
+ #skyjo-play>#skyjo-restart,#skyjo-play>#skyjo-result-reopen,#skyjo-play>#skyjo-log-toggle{display:inline-block;margin-right:10px;vertical-align:middle}
+ #room-details button,#game-picker button,#bot-setup button,#uno-setup>button,#skyjo-setup>button,#wizard-setup>button{width:auto;min-width:190px;max-width:340px}
+ #bot-setup .bot-entry{display:flex;align-items:center;justify-content:space-between;gap:14px}
+ #bot-setup .bot-entry button{min-width:120px;margin:0}
+ #uno-play>#uno-restart,#uno-play>#uno-toggle-log,#wizard-play>#wizard-next,#wizard-play>#wizard-result-reopen,#wizard-play>#wizard-log-toggle{display:inline-block;width:auto;min-width:190px;max-width:340px;margin-right:10px;vertical-align:middle}
+ #uno-actions button,#wizard-actions button{width:auto;min-width:130px;display:inline-flex;align-items:center;justify-content:center}
+ #uno-actions,#wizard-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+ #uno-actions button,#wizard-actions button{margin-top:8px}
+}
+@media(min-width:1250px){
+ .shell{max-width:1440px}
+ #skyjo-board{grid-template-columns:minmax(220px,1fr) minmax(390px,460px) minmax(220px,1fr);gap:24px}
+ #skyjo-board #skyjo-hand{max-width:420px}
+ #skyjo-board .skyjo-opponent-grid .skyjo-card,#skyjo-board .skyjo-opponent-grid .skyjo-empty{min-height:64px}
+}
