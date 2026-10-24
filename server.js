@@ -16,6 +16,7 @@ const PORT = Number(process.env.PORT || 3000);
 const rooms = new Map();
 const dataDir = path.join(__dirname, 'data');
 const dataFile = path.join(dataDir, 'rooms.json');
+const gameLimits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6}};
 const validName = name => typeof name === 'string' && name.trim().length >= 1 && name.trim().length <= 24;
 const validId = id => typeof id === 'string' && /^[a-f0-9]{32}$/.test(id);
 const code = () => crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -187,7 +188,7 @@ io.on('connection', socket => {
   socket.on('game:start', (_,ack)=>{
     const r=rooms.get(socket.data.room);
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spiel kann nicht gestartet werden.'});
-    if(r.players.size<2)return respond(ack,{error:'Mindestens zwei Spieler benötigt.'});
+    const limit=gameLimits[r.selectedGame||'uno'];if(r.players.size<limit.min||r.players.size>limit.max)return respond(ack,{error:'Dieses Spiel benötigt '+limit.min+' bis '+limit.max+' Spieler.'});
     if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});
     r.gameType=r.selectedGame||'uno';if(r.gameType==='skyjo')r.skyjoScores={};if(r.gameType==='wizard')r.wizardScores={};r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);save();
     publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});
@@ -198,7 +199,7 @@ io.on('connection', socket => {
     try{performAction(r,socket.data.player,action);respond(ack,{ok:true});}
     catch(err){respond(ack,{error:err.message});}
   });
-  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});if(r.gameType==='wizard')gameRegistry.get('wizard').restart(r.game);else {if(r.gameType==='skyjo'&&r.game.matchFinished){r.skyjoScores={};save();}r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);}publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
+  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});if(r.gameType==='wizard'){if(r.game.matchFinished){r.wizardScores={};r.game=gameRegistry.get('wizard').create([...r.players.keys()],r);}else gameRegistry.get('wizard').restart(r.game);}else {if(r.gameType==='skyjo'&&r.game.matchFinished){r.skyjoScores={};save();}r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);}publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
   socket.on('room:finish-game',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Spielwechsel erst nach Rundenende möglich.'});const timer=botTimers.get(r.code);if(timer)clearTimeout(timer);botTimers.delete(r.code);r.game=null;r.gameType=null;save();publish(r);respond(ack,{ok:true});});
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
