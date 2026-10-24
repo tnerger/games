@@ -18,7 +18,7 @@
   $('start-elfer').classList.toggle('hidden',r.host!==identity?.id);
   $('elfer-play').classList.toggle('hidden',r.activeGame!=='elfer');
   if(r.activeGame==='elfer'){$('uno-play').classList.add('hidden');$('skyjo-play').classList.add('hidden');$('wizard-play').classList.add('hidden');$('uno-setup').classList.add('hidden');$('skyjo-setup').classList.add('hidden');$('wizard-setup').classList.add('hidden');}
-  if(!r.gameStarted){lastRound=null;$('elfer-result-overlay').classList.add('hidden');}
+  if(!r.gameStarted){lastRound=null;$('elfer-result-overlay').classList.add('hidden');$('elfer-draw-overlay').classList.add('hidden');}
  });
  socket.on('game:state',g=>{
   if(g.game!=='elfer')return;
@@ -42,15 +42,25 @@
    row.append(numbers);board.append(row);
   }
   const last=g.events.at(-1);$('elfer-last').textContent=last?(last.actor?name(last.actor)+': ':'')+last.text:'';
+  const draw=g.pendingDraw;
+  $('elfer-draw-overlay').classList.toggle('hidden',!draw||!mine||g.finished);
+  if(draw&&mine&&!g.finished){
+   const required=g.legal.some(c=>c.color===draw.color&&c.value===draw.value);
+   $('elfer-draw-title').textContent=required?'🃏 Diese Karte musst du legen!':'🂠 Du hast eine Karte gezogen';
+   $('elfer-draw-message').textContent=required?'Die gezogene Karte passt. Sie muss jetzt angelegt werden.':'Diese Karte passt noch nicht und bleibt auf deiner Hand.';
+   $('elfer-draw-card').replaceChildren(card(draw,false,()=>{}));
+   $('elfer-draw-confirm').textContent=required?'Jetzt legen':'Verstanden · Weiter';
+   $('elfer-draw-confirm').onclick=()=>send('game:action',required?{type:'play',color:draw.color,value:draw.value}:{type:'ack-draw'});
+  }
   const actions=$('elfer-actions');actions.replaceChildren();
-  if(mine&&!g.finished){
-   if(g.played)actions.append(btn('Zug beenden',()=>send('game:action',{type:'end'})));
+  if(mine&&!g.finished&&!draw){
+   if(g.played)actions.append(btn('✓ Zug beenden →',()=>send('game:action',{type:'end'}),'elfer-end-turn'));
    else if(!g.legal.length)actions.append(g.deckCount&&g.drawn<3?btn('🂠 Karte ziehen ('+(3-g.drawn)+' übrig)',()=>send('game:action',{type:'draw'})):btn('Weiter / Passen',()=>send('game:action',{type:'pass'})));
   }
   if(!g.finished)actions.append(node('span','Ziehstapel: '+g.deckCount+' Karten','elfer-deck-count'));
   const hand=$('elfer-hand');hand.replaceChildren();
   const playable=new Set(g.legal.map(c=>c.color+':'+c.value));
-  for(const c of [...g.hand].sort((a,b)=>Object.keys(colors).indexOf(a.color)-Object.keys(colors).indexOf(b.color)||a.value-b.value))hand.append(card(c,mine&&!g.finished&&playable.has(c.color+':'+c.value),()=>send('game:action',{type:'play',color:c.color,value:c.value})));
+  for(const c of [...g.hand].sort((a,b)=>Object.keys(colors).indexOf(a.color)-Object.keys(colors).indexOf(b.color)||a.value-b.value))hand.append(card(c,mine&&!g.finished&&!draw&&playable.has(c.color+':'+c.value),()=>send('game:action',{type:'play',color:c.color,value:c.value})));
   const scores=$('elfer-scores');scores.replaceChildren(node('h3','Punktestand (Minuspunkte)'));
   for(const p of g.players)scores.append(node('p',name(p.id)+': '+p.score+(g.roundScores?' (Runde: '+g.roundScores[p.id]+')':'')));
   $('elfer-restart').classList.toggle('hidden',!g.finished||room?.host!==identity?.id);
