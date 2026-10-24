@@ -126,7 +126,7 @@ function botAction(g,id,level){
   if(!trick.length)chance=strength;
   if(card.type==='wizard'&&trick.some(t=>t.card.type==='wizard'))chance=0;
   if(card.type==='jester'&&trick.length&&current!==id)chance=0;
-  const reserve=card.type==='wizard'?1.6:card.type==='number'?(card.suit===g.trump?.5:0)+card.value/18:0;
+  const reserve=card.type==='wizard'?1.6:card.type==='number'?(card.suit===g.trump ? .5 : 0)+card.value/18:0;
   const target=Math.min(1,need/Math.max(1,tricksLeft));
   // When ahead of the bid, dump dangerous high cards without winning.
   const score=need===0
