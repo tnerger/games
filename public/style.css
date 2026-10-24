@@ -395,3 +395,10 @@ button.rommy-red{color:#bf2638}button.rommy-blue{color:#205ec6}button.rommy-blac
 #rommy-draw{grid-column:1/-1}
 #rommy-bag,#rommy-last{font-size:.87rem}
 @media(min-width:700px){button.rommy-tile{width:46px;height:62px;min-height:62px;font-size:1.5rem}#rommy-hand{position:static;max-height:none}}
+
+
+.rommy-rack-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:18px 0 10px}
+.rommy-rack-heading h3{margin:0}
+.rommy-sort-controls{display:flex;gap:6px}
+.rommy-sort-controls button{width:auto;min-height:36px;margin:0;padding:7px 10px;font-size:.8rem}
+.rommy-sort-controls button[aria-pressed="true"]{background:#ffc66b;color:#242039}
