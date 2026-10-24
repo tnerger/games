@@ -414,3 +414,11 @@ button.rommy-tile-arriving{animation:rommy-arrive .65s cubic-bezier(.15,.8,.25,1
  .rommy-row-tiles{align-items:flex-start}
 }
 @media(prefers-reduced-motion:reduce){button.rommy-tile-arriving{animation:none}}
+
+
+/* RommyCup: Herkunft der Steine und Gruppen teilen */
+button.rommy-table-tile-in-rack{border:3px solid #ff5667;box-shadow:0 0 0 2px #792332,0 0 12px #ff566766}
+button.rommy-split{align-self:center;flex:0 0 auto;width:22px;min-height:34px;height:34px;margin:0 -3px;padding:0;background:transparent;border:1px dashed #8698c0;border-radius:7px;color:#e3d7ac;font-size:.85rem;opacity:.7}
+button.rommy-split:hover,button.rommy-split:focus-visible{background:#6477a4;opacity:1;color:#fff}
+button.rommy-split:disabled{opacity:.25}
+@media(hover:none){button.rommy-split{opacity:1;min-width:24px}}
