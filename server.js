@@ -9,6 +9,7 @@ const skyjo = require('./skyjo');
 const gameRegistry=require('./game-registry');
 const fs = require('node:fs');
 const path = require('node:path');
+const accounts = require('./accounts');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 10000 });
@@ -34,6 +35,87 @@ try {
     rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno', options:{...uno.defaults,...(r.options||{})}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
   }
 } catch (err) { if (err.code !== 'ENOENT') console.error('Spielstände konnten nicht geladen werden:', err.message); }
+const json = express.json({limit:'4kb'});
+const cookieName = 'games_session';
+function cookieToken(req) {
+  const value = (req.headers.cookie || '').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName+'='));
+  return value ? value.slice(cookieName.length+1) : null;
+}
+function currentUser(req) { return accounts.getSession(cookieToken(req)); }
+function requireUser(req,res,next) {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({error:'Bitte anmelden.'});
+  if (user.must_change) return res.status(403).json({error:'Bitte zuerst das Passwort ändern.'});
+  req.user = user;next();
+}
+function requireAdmin(req,res,next) {
+  if (!req.user.is_admin) return res.status(403).json({error:'Nur Administratoren.'});
+  next();
+}
+const loginAttempts = new Map();
+function loginAllowed(ip) {
+  const entry=loginAttempts.get(ip);
+  return !entry || Date.now()-entry.time>15*60000 || entry.count<10;
+}
+app.use((req,res,next)=>{
+  if (req.path.startsWith('/api/')) {
+    res.set('Cache-Control','no-store');
+    res.set('X-Content-Type-Options','nosniff');
+  }
+  next();
+});
+app.post('/api/auth/login',json,(req,res)=>{
+  const ip=req.ip;
+  if (!loginAllowed(ip)) return res.status(429).json({error:'Zu viele Versuche. Bitte später erneut versuchen.'});
+  const user=accounts.authenticate(req.body?.username,req.body?.password);
+  if (!user) {
+    const old=loginAttempts.get(ip);
+    loginAttempts.set(ip,{time:Date.now(),count:old&&Date.now()-old.time<15*60000?old.count+1:1});
+    return res.status(401).json({error:'Anmeldung fehlgeschlagen.'});
+  }
+  loginAttempts.delete(ip);
+  const token=accounts.createSession(user.id);
+  res.cookie(cookieName,token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:7*86400000});
+  res.json({user:accounts.safeUser(user)});
+});
+app.post('/api/auth/logout',(req,res)=>{
+  accounts.destroySession(cookieToken(req));
+  res.clearCookie(cookieName,{path:'/',sameSite:'strict',secure:process.env.NODE_ENV==='production'});
+  res.json({ok:true});
+});
+app.get('/api/auth/me',(req,res)=>{
+  const user=currentUser(req);
+  res.json({user:accounts.safeUser(user)});
+});
+app.post('/api/auth/change-password',json,(req,res)=>{
+  const user=currentUser(req);
+  if (!user) return res.status(401).json({error:'Bitte anmelden.'});
+  if (!user.must_change && !accounts.verifyPassword(req.body?.oldPassword || '',user.password_hash))
+    return res.status(403).json({error:'Aktuelles Passwort falsch.'});
+  try {
+    accounts.changePassword(user.id,req.body?.newPassword);
+    accounts.destroySession(cookieToken(req));
+    res.clearCookie(cookieName,{path:'/',sameSite:'strict',secure:process.env.NODE_ENV==='production'});
+    res.json({ok:true});
+  } catch(e){res.status(400).json({error:e.message});}
+});
+app.get('/api/admin/users',requireUser,requireAdmin,(req,res)=>res.json({users:accounts.listUsers()}));
+app.post('/api/admin/users',requireUser,requireAdmin,json,(req,res)=>{
+  try {res.json({user:accounts.createUser(req.body?.username,req.body?.password)});}
+  catch(e){res.status(400).json({error:e.message.includes('UNIQUE')?'Benutzername bereits vergeben.':e.message});}
+});
+app.post('/api/admin/users/:id',requireUser,requireAdmin,json,(req,res)=>{
+  const target=accounts.getUser(req.params.id);
+  if (!target) return res.status(404).json({error:'Benutzer nicht gefunden.'});
+  const action=req.body?.action;
+  if (target.is_admin && action!=='reset') return res.status(403).json({error:'Administratorkonto geschützt.'});
+  try {
+    if (action==='reset') accounts.changePassword(target.id,req.body?.password,true);
+    else if (action==='disable'||action==='enable') accounts.setDisabled(target.id,action==='disable');
+    else return res.status(400).json({error:'Unbekannte Aktion.'});
+    res.json({ok:true});
+  } catch(e){res.status(400).json({error:e.message});}
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/version', (_, res) => res.json({ version: require('./package.json').version }));
 
@@ -137,7 +219,20 @@ function performAction(r,id,action){
 }
 function publish(r) { io.to(r.code).emit('room', publicRoom(r)); }
 function respond(ack, data) { if (typeof ack === 'function') ack(data); }
+io.use((socket,next)=>{
+  const header=socket.request.headers.cookie || '';
+  const pair=header.split(';').map(x=>x.trim()).find(x=>x.startsWith(cookieName+'='));
+  const user=accounts.getSession(pair?.slice(cookieName.length+1));
+  if (!user || user.must_change) return next(new Error('Anmeldung erforderlich.'));
+  socket.data.accountId=user.id;
+  next();
+});
 io.on('connection', socket => {
+  socket.use((packet,next)=>{
+    const user=accounts.getUser(socket.data.accountId);
+    if (!user || user.disabled || user.must_change) return next(new Error('Konto nicht freigegeben.'));
+    next();
+  });
   function leave() {
     if (!socket.data.room) return;
     const r = rooms.get(socket.data.room);
@@ -154,7 +249,8 @@ io.on('connection', socket => {
     socket.data.player = null;
   }
   function joinRoom(r, identity, ack) {
-    if (!validId(identity?.id) || !validName(identity?.name)) return respond(ack, { error: 'Ungültiger Name oder Spielerkennung.' });
+    if (identity?.id !== socket.data.accountId || !validName(identity?.name)) return respond(ack, { error: 'Ungültige Spielerkennung.' });
+    identity = {id:socket.data.accountId,name:accounts.getUser(socket.data.accountId).username};
     const old = r.players.get(identity.id);
     if (old?.bot) return respond(ack,{error:'Dieser Platz gehört einem Bot.'});
     if (!old && r.players.size >= 6) return respond(ack, { error: 'Dieser Raum ist voll.' });
@@ -170,7 +266,8 @@ io.on('connection', socket => {
     respond(ack, { ok: true, room: publicRoom(r) });
   }
   socket.on('create', (identity, ack) => {
-    if (!validId(identity?.id) || !validName(identity?.name)) return respond(ack, { error: 'Bitte einen Namen eingeben.' });
+    if (identity?.id !== socket.data.accountId) return respond(ack, { error: 'Bitte anmelden.' });
+    identity = {id:socket.data.accountId,name:accounts.getUser(socket.data.accountId).username};
     let c;
     do { c = code(); } while (rooms.has(c));
     const r = { code: c, host: identity.id, scores:{},skyjoScores:{},wizardScores:{},elferScores:{},selectedGame:'uno',options:{...uno.defaults}, players: new Map() };
