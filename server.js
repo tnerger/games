@@ -238,7 +238,7 @@ function scheduleBot(r){
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
- r.lastPlayed=Date.now();
+ r.lastPlayed=Date.now();save();
  const wasFinished=r.game.finished;
  const before=r.gameType==='uno'?r.game.log.length:0;
  gameRegistry.get(r.gameType).act(r.game,id,action);
@@ -255,7 +255,7 @@ function publicRooms(){
  return [...rooms.values()].filter(r=>r.isPublic).map(r=>({
   code:r.code,name:r.name||r.code,game:r.selectedGame||'uno',
   players:r.players.size,maxPlayers:gameLimits[r.selectedGame||'uno'].max,
-  playing:!!r.game&&!r.game.finished
+  playing:!!r.game
  })).sort((a,b)=>a.name.localeCompare(b.name,'de'));
 }
 function publishRooms(){io.emit('rooms:public',publicRooms());}
