@@ -144,11 +144,11 @@ socket.on('game:state',state=>{
  if(state.autoPenalty)topCard.classList.add('uno-penalty-pulse');
  top.append(topCard);currentTopForAnimation=newTop;
  const opponents=$('uno-opponents');opponents.replaceChildren();
- for(const p of state.players.filter(p=>p.id!==identity?.id)){
+ for(const p of state.players){
   const person=roomInfo?.players.find(x=>x.id===p.id);
   const active=state.turn===p.id&&!state.finished;
   const item=make('div',undefined,'uno-opponent'+(active?' uno-opponent-active':''));
-  item.append(make('span',active?'▶':'','uno-turn-arrow'),make('span',person?playerName(person):'Mitspieler','uno-opponent-name'),make('span','🂠 '+p.count,'uno-opponent-count'));
+  item.append(make('span',active?'▶':'','uno-turn-arrow'),make('span',p.id===identity?.id?'Du':person?playerName(person):'Mitspieler','uno-opponent-name'),make('span','🂠 '+p.count,'uno-opponent-count'));
   opponents.append(item);
  }
  if(state.finished){
