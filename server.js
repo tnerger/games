@@ -25,14 +25,14 @@ function save() {
   fs.mkdirSync(dataDir, { recursive: true });
   const tmp = dataFile + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify([...rooms.values()].map(r => ({
-    code: r.code, host: r.host, scores:r.scores||{}, skyjoScores:r.skyjoScores||{}, wizardScores:r.wizardScores||{}, elferScores:r.elferScores||{}, selectedGame:r.selectedGame||'uno', options:r.options||uno.defaults, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
+    code: r.code, host: r.host, name:r.name||'', isPublic:!!r.isPublic, lastPlayed:r.lastPlayed||Date.now(), scores:r.scores||{}, skyjoScores:r.skyjoScores||{}, wizardScores:r.wizardScores||{}, elferScores:r.elferScores||{}, selectedGame:r.selectedGame||'uno', options:r.options||uno.defaults, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
   }))));
   fs.renameSync(tmp, dataFile);
 }
 try {
   for (const r of JSON.parse(fs.readFileSync(dataFile, 'utf8'))) {
     if (!/^[A-F0-9]{6}$/.test(r.code) || !Array.isArray(r.players)) continue;
-    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno', options:{...uno.defaults,...(r.options||{})}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
+    rooms.set(r.code, { code: r.code, host: r.host, name:typeof r.name==='string'?r.name.slice(0,40):'', isPublic:!!r.isPublic, lastPlayed:Number.isFinite(r.lastPlayed)?r.lastPlayed:Date.now(), scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno', options:{...uno.defaults,...(r.options||{})}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
   }
 } catch (err) { if (err.code !== 'ENOENT') console.error('Spielstände konnten nicht geladen werden:', err.message); }
 const json = express.json({limit:'4kb'});
@@ -205,7 +205,7 @@ app.post('/api/admin/update', adminAuth, express.json({ limit: '1kb' }), async (
   } catch (err) { updating = false; res.status(500).json({ error: 'Update fehlgeschlagen: ' + err.message }); }
 });
 
-const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online, bot:p.bot||null })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno',activeGame:r.gameType||null });
+const publicRoom = r => ({ code: r.code, host: r.host, name:r.name||'', isPublic:!!r.isPublic, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online, bot:p.bot||null })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno',activeGame:r.gameType||null });
 function publishGame(r) { if(!r.game)return;const engine=gameRegistry.get(r.gameType||'uno');for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',engine.view(r.game,socket.data.player));} }
 
 const botTimers=new Map();
@@ -238,6 +238,7 @@ function scheduleBot(r){
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
+ r.lastPlayed=Date.now();
  const wasFinished=r.game.finished;
  const before=r.gameType==='uno'?r.game.log.length:0;
  gameRegistry.get(r.gameType).act(r.game,id,action);
@@ -250,7 +251,31 @@ function performAction(r,id,action){
  if(!wasFinished&&r.game.finished&&r.gameType==='uno'){const winner=r.game.winner;const points=Object.entries(r.game.hands).filter(([pid])=>pid!==winner).flatMap(([,hand])=>hand).reduce((sum,c)=>sum+(c.value==='wild'||c.value==='wild4'?50:['skip','reverse','draw2'].includes(c.value)?20:Number(c.value)||0),0);const score=r.scores[winner]||{wins:0,points:0};r.scores[winner]={wins:score.wins+1,points:score.points+points};save();publish(r);}
  publishGame(r);scheduleBot(r);
 }
-function publish(r) { io.to(r.code).emit('room', publicRoom(r)); }
+function publicRooms(){
+ return [...rooms.values()].filter(r=>r.isPublic).map(r=>({
+  code:r.code,name:r.name||r.code,game:r.selectedGame||'uno',
+  players:r.players.size,maxPlayers:gameLimits[r.selectedGame||'uno'].max,
+  playing:!!r.game&&!r.game.finished
+ })).sort((a,b)=>a.name.localeCompare(b.name,'de'));
+}
+function publishRooms(){io.emit('rooms:public',publicRooms());}
+function publish(r) { io.to(r.code).emit('room', publicRoom(r));publishRooms(); }
+const ROOM_TTL=24*60*60*1000;
+function cleanupRooms(){
+ let changed=false;
+ for(const [id,r] of rooms){
+  if(Date.now()-(r.lastPlayed||0)<ROOM_TTL)continue;
+  const timer=botTimers.get(id);if(timer)clearTimeout(timer);botTimers.delete(id);
+  io.to(id).emit('room:removed',{message:'Der Raum wurde nach 24 Stunden ohne Spielaktivität gelöscht.'});
+  for(const client of io.sockets.sockets.values()){
+   if(client.data.room===id){client.leave(id);client.data.room=null;client.data.player=null;}
+  }
+  rooms.delete(id);changed=true;
+ }
+ if(changed){save();publishRooms();}
+}
+setInterval(cleanupRooms,60*60*1000).unref();
+setImmediate(cleanupRooms);
 function respond(ack, data) { if (typeof ack === 'function') ack(data); }
 io.use((socket,next)=>{
   const header=socket.request.headers.cookie || '';
@@ -287,7 +312,8 @@ io.on('connection', socket => {
     identity = {id:socket.data.accountId,name:accounts.getUser(socket.data.accountId).username};
     const old = r.players.get(identity.id);
     if (old?.bot) return respond(ack,{error:'Dieser Platz gehört einem Bot.'});
-    if (!old && r.players.size >= 6) return respond(ack, { error: 'Dieser Raum ist voll.' });
+    if (!old && r.game) return respond(ack,{error:'Beitritt während eines laufenden Spiels nicht möglich.'});
+    if (!old && r.players.size >= gameLimits[r.selectedGame||'uno'].max) return respond(ack, { error: 'Dieser Raum ist voll.' });
     if (socket.data.room) leave();
     if (!old) r.players.set(identity.id, { id: identity.id, name: identity.name.trim(), online: true });
     else { old.name = identity.name.trim(); old.online = true; }
@@ -299,19 +325,37 @@ io.on('connection', socket => {
     if(r.game) socket.emit('game:state',gameRegistry.get(r.gameType||'uno').view(r.game,identity.id));
     respond(ack, { ok: true, room: publicRoom(r) });
   }
-  socket.on('create', (identity, ack) => {
+  socket.on('rooms:list',(_,ack)=>respond(ack,{rooms:publicRooms()}));
+  socket.on('create', (payload, ack) => {
+    const identity=payload?.identity||payload;
     if (identity?.id !== socket.data.accountId) return respond(ack, { error: 'Bitte anmelden.' });
-    identity = {id:socket.data.accountId,name:accounts.getUser(socket.data.accountId).username};
+    const name=typeof payload?.roomName==='string'?payload.roomName.trim():'';
+    if(name.length>40||(!name&&payload?.isPublic))return respond(ack,{error:'Öffentliche Räume benötigen einen Namen mit maximal 40 Zeichen.'});
+    const owner={id:socket.data.accountId,name:accounts.getUser(socket.data.accountId).username};
     let c;
     do { c = code(); } while (rooms.has(c));
-    const r = { code: c, host: identity.id, scores:{},skyjoScores:{},wizardScores:{},elferScores:{},selectedGame:'uno',options:{...uno.defaults}, players: new Map() };
+    const r = { code: c, host: owner.id, name, isPublic:payload?.isPublic===true, lastPlayed:Date.now(), scores:{},skyjoScores:{},wizardScores:{},elferScores:{},selectedGame:'uno',options:{...uno.defaults}, players: new Map() };
     rooms.set(c, r);
-    joinRoom(r, identity, ack);
+    joinRoom(r, owner, ack);
   });
   socket.on('join', ({ code: c, identity } = {}, ack) => {
     const r = rooms.get(String(c || '').toUpperCase());
     if (!r) return respond(ack, { error: 'Raum nicht gefunden.' });
     joinRoom(r, identity, ack);
+  });
+  socket.on('room:kick',(id,ack)=>{
+    const r=rooms.get(socket.data.room);
+    if(!r||r.host!==socket.data.player)return respond(ack,{error:'Nur der Raumleiter darf Mitspieler entfernen.'});
+    if(r.game)return respond(ack,{error:'Während einer Partie können keine Spieler entfernt werden.'});
+    if(id===r.host||!r.players.has(id))return respond(ack,{error:'Dieser Spieler kann nicht entfernt werden.'});
+    r.players.delete(id);
+    for(const client of io.sockets.sockets.values()){
+      if(client.data.room===r.code&&client.data.player===id){
+        client.emit('room:kicked',{message:'Du wurdest vom Raumleiter entfernt.'});
+        client.leave(r.code);client.data.room=null;client.data.player=null;
+      }
+    }
+    save();publish(r);respond(ack,{ok:true});
   });
   socket.on('bot:add',(settings,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Bots können nur vor dem Spiel vom Raumleiter hinzugefügt werden.'});const difficulty=typeof settings==='string'?settings:settings?.difficulty;const requested=typeof settings==='object'?settings?.name:null;if(!['easy','normal','hard'].includes(difficulty))return respond(ack,{error:'Unbekannte Schwierigkeit.'});if(r.players.size>=6)return respond(ack,{error:'Maximal sechs Spieler.'});const id=crypto.randomBytes(16).toString('hex');const names={easy:'Leicht',normal:'Normal',hard:'Schwer'};const n=[...r.players.values()].filter(p=>p.bot).length+1;const name=typeof requested==='string'&&requested.trim()?requested.trim():'Bot '+n;if(!validName(name))return respond(ack,{error:'Der Bot-Name muss 1 bis 24 Zeichen lang sein.'});r.players.set(id,{id,name,bot:difficulty,online:true});save();publish(r);respond(ack,{ok:true});});
   socket.on('bot:remove',(id,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game||!r.players.get(id)?.bot)return respond(ack,{error:'Bot kann nicht entfernt werden.'});r.players.delete(id);save();publish(r);respond(ack,{ok:true});});
@@ -328,7 +372,7 @@ io.on('connection', socket => {
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spiel kann nicht gestartet werden.'});
     const limit=gameLimits[r.selectedGame||'uno'];if(r.players.size<limit.min||r.players.size>limit.max)return respond(ack,{error:'Dieses Spiel benötigt '+limit.min+' bis '+limit.max+' Spieler.'});
     if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});
-    r.gameType=r.selectedGame||'uno';if(r.gameType==='skyjo')r.skyjoScores={};if(r.gameType==='wizard')r.wizardScores={};if(r.gameType==='elfer')r.elferScores={};r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);save();
+    r.gameType=r.selectedGame||'uno';if(r.gameType==='skyjo')r.skyjoScores={};if(r.gameType==='wizard')r.wizardScores={};if(r.gameType==='elfer')r.elferScores={};r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);r.lastPlayed=Date.now();save();
     publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});
   });
   socket.on('game:action',(action,ack)=>{
@@ -338,7 +382,7 @@ io.on('connection', socket => {
     try{performAction(r,socket.data.player,action);respond(ack,{ok:true});}
     catch(err){respond(ack,{error:err.message});}
   });
-  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});if(r.gameType==='wizard'){if(r.game.matchFinished){r.wizardScores={};r.game=gameRegistry.get('wizard').create([...r.players.keys()],r);}else gameRegistry.get('wizard').restart(r.game);}else {if(r.gameType==='skyjo'&&r.game.matchFinished){r.skyjoScores={};save();}r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);}publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
+  socket.on('game:restart',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game?.finished)return respond(ack,{error:'Nur der Raumleiter kann nach Spielende eine neue Runde starten.'});if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});if(r.gameType==='wizard'){if(r.game.matchFinished){r.wizardScores={};r.game=gameRegistry.get('wizard').create([...r.players.keys()],r);}else gameRegistry.get('wizard').restart(r.game);}else {if(r.gameType==='skyjo'&&r.game.matchFinished){r.skyjoScores={};save();}r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);}r.lastPlayed=Date.now();save();publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});});
   socket.on('room:finish-game',(_,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||!r.game)return respond(ack,{error:'Nur der Raumleiter kann das laufende Spiel beenden.'});const cancelled=!r.game.finished;const hostName=r.players.get(socket.data.player)?.name||'Der Raumleiter';const timer=botTimers.get(r.code);if(timer)clearTimeout(timer);botTimers.delete(r.code);r.game=null;r.gameType=null;save();publish(r);if(cancelled)io.to(r.code).emit('game:cancelled',{by:hostName,hostId:socket.data.player});respond(ack,{ok:true});});
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
