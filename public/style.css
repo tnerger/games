@@ -460,3 +460,8 @@ button.rommy-split-toggle:disabled{opacity:.35}
  #rommy-table{grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:12px 8px}
  #rommy-table .rommy-row.selected .rommy-tile{width:46px}
 }
+
+/* RommyCup Siegesanzeige */
+.rommy-result-dialog{text-align:center;max-width:430px}
+.rommy-result-dialog h2{font-size:1.65rem;margin-bottom:12px}
+.rommy-result-dialog p{font-size:1.05rem;line-height:1.55}
