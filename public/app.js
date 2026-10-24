@@ -49,43 +49,64 @@ $('auth-logout').onclick=async()=>{
  socket.disconnect();account=null;identity=null;roomCode='';sessionStorage.removeItem('gamesRoom');show('auth-login');
 };
 $('profile-open').onclick=()=>{
- $('profile-name').value=account.username;
- $('profile-name-password').value='';
- $('profile-old-password').value='';
- $('profile-new-password').value='';
- $('profile-confirm-password').value='';
+ $('profile-current-name').textContent=account.username;
+ closeProfileDialogs();
  status('');
  show('profile');
 };
-$('profile-back').onclick=()=>{status('');enter();};
+function closeProfileDialogs(){
+ for(const id of ['profile-name-dialog','profile-password-dialog'])$(id).classList.add('hidden');
+ for(const id of ['profile-name-password','profile-old-password','profile-new-password','profile-confirm-password'])$(id).value='';
+ $('profile-name-error').textContent='';
+ $('profile-password-error').textContent='';
+}
+$('profile-back').onclick=()=>{closeProfileDialogs();status('');enter();};
+$('profile-name-open').onclick=()=>{
+ closeProfileDialogs();
+ $('profile-name').value=account.username;
+ $('profile-name-dialog').classList.remove('hidden');
+ $('profile-name').focus();
+};
+$('profile-password-open').onclick=()=>{
+ closeProfileDialogs();
+ $('profile-password-dialog').classList.remove('hidden');
+ $('profile-old-password').focus();
+};
+$('profile-name-cancel').onclick=closeProfileDialogs;
+$('profile-password-cancel').onclick=closeProfileDialogs;
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&!$('profile').classList.contains('hidden'))closeProfileDialogs();
+});
+
 $('profile-name-submit').onclick=async()=>{
  const username=$('profile-name').value.trim();
  const currentPassword=$('profile-name-password').value;
- if(!/^[a-zA-Z0-9_.-]{3,24}$/.test(username))return status('Benutzername: 3–24 Zeichen (Buchstaben, Ziffern, _, ., -).');
+ if(!/^[a-zA-Z0-9_.-]{3,24}$/.test(username))return $('profile-name-error').textContent='Benutzername: 3–24 Zeichen (Buchstaben, Ziffern, _, ., -).';
  try{
   const data=await request('/api/profile/username','POST',{username,currentPassword});
   account=data.user;
   identity={id:account.id,name:account.username};
   $('greeting').textContent=account.username;
-  $('profile-name-password').value='';
+  $('profile-current-name').textContent=account.username;
+  closeProfileDialogs();
   status('Benutzername gespeichert. Bei bestehenden Räumen erscheint der neue Name nach erneutem Beitritt.');
- }catch(e){status(e.message);}
+ }catch(e){$('profile-name-error').textContent=e.message;}
 };
 $('profile-password-submit').onclick=async()=>{
  const currentPassword=$('profile-old-password').value;
  const newPassword=$('profile-new-password').value;
- if(newPassword!==$('profile-confirm-password').value)return status('Passwörter stimmen nicht überein.');
- if(newPassword.length<12||newPassword.length>256)return status('Passwort muss 12–256 Zeichen lang sein.');
+ if(newPassword!==$('profile-confirm-password').value)return $('profile-password-error').textContent='Passwörter stimmen nicht überein.';
+ if(newPassword.length<12||newPassword.length>256)return $('profile-password-error').textContent='Passwort muss 12–256 Zeichen lang sein.';
  try{
   await request('/api/profile/password','POST',{currentPassword,newPassword});
   $('profile-old-password').value='';
   $('profile-new-password').value='';
   $('profile-confirm-password').value='';
-  socket.disconnect();account=null;identity=null;roomCode='';sessionStorage.removeItem('gamesRoom');
+  closeProfileDialogs();socket.disconnect();account=null;identity=null;roomCode='';sessionStorage.removeItem('gamesRoom');
   $('auth-password').value='';
   status('Passwort geändert. Bitte erneut anmelden.');
   show('auth-login');
- }catch(e){status(e.message);}
+ }catch(e){$('profile-password-error').textContent=e.message;}
 };
 $('admin-open').onclick=async()=>{show('admin-users');await loadUsers();};
 $('admin-back').onclick=()=>enter();
