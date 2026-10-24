@@ -153,3 +153,15 @@
 #wizard-result-table tr.wizard-exact{background:#2b574c}
 #wizard-result-winners{font-weight:750;color:#ffdd95}
 #wizard-result-close{margin-top:14px}
+
+/* Skyjo: clearly distinguish face-down gray cards from blue negative cards */
+.skyjo-card.back{background:repeating-linear-gradient(135deg,#626b7b 0px,#626b7b 12px,#4c5564 12px,#4c5564 24px);border-color:#aeb5c1;color:#fff;box-shadow:inset 0 0 0 3px #414955,0 3px 9px #0005}
+.skyjo-card.low{background:#124d9d;border-color:#9ac8ff}
+.skyjo-removing{position:relative;z-index:2;animation:skyjo-column-clear 1.8s ease-in-out both!important;outline:3px solid #ffdb69!important;outline-offset:1px;pointer-events:none}
+@keyframes skyjo-column-clear{0%,20%{opacity:1;transform:scale(1);box-shadow:0 0 0 0 #ffdb6900}35%,55%,75%{opacity:1;transform:scale(1.08);box-shadow:0 0 0 6px #ffdb69cc}45%,65%{opacity:1;transform:scale(1);box-shadow:0 0 0 2px #ffdb6966}85%{opacity:1;transform:scale(.98)}100%{opacity:0;transform:scale(.45)}}
+.skyjo-final-victory .skyjo-result-dialog{border:3px solid #ffdf7a;background:linear-gradient(155deg,#51417a,#253d60);box-shadow:0 0 45px #ffd76c66,0 24px 70px #000b}
+.skyjo-final-victory .skyjo-result-icon{font-size:4rem;animation:skyjo-trophy 1.1s ease-in-out infinite alternate}
+.skyjo-final-victory #skyjo-result-title{font-size:1.65rem;color:#ffe49c}
+@keyframes skyjo-trophy{from{transform:scale(1) rotate(-6deg)}to{transform:scale(1.16) rotate(6deg)}}
+@media(prefers-reduced-motion:reduce){.skyjo-removing{animation:skyjo-column-fade 1.8s linear both!important}.skyjo-final-victory .skyjo-result-icon{animation:none}}
+@keyframes skyjo-column-fade{0%,70%{opacity:1}100%{opacity:0}}
