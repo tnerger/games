@@ -38,6 +38,10 @@ function act(g,id,a){
  if(g.players[g.turn]!==id)throw Error('Du bist nicht am Zug.');
  if(!a||typeof a!=='object')throw Error('Ungültige Aktion.');
  const hand=g.hands[id];
+ if(a.type==='pass'){
+  if(g.bag.length)throw Error('Es sind noch Steine im Beutel.');
+  event(g,id,'passt.');g.turn=(g.turn+1)%g.players.length;return;
+ }
  if(a.type==='draw'){
   if(!g.bag.length)throw Error('Der Beutel ist leer. Lege Steine ab.');
   hand.push(g.bag.pop());event(g,id,'zieht einen Stein.');
@@ -52,12 +56,13 @@ function act(g,id,a){
  if(old.some(t=>!ids.includes(t.id)))throw Error('Alle bereits ausgelegten Steine müssen auf dem Tisch bleiben.');
  const used=ids.filter(x=>hand.some(t=>t.id===x));
  if(!used.length)throw Error('Du musst mindestens einen eigenen Stein auslegen.');
- if(!g.opened[id]&&old.length&&groups.some(row=>row.some(x=>old.some(t=>t.id===x))))throw Error('Bei der Erstauslage darfst du keine Tischsteine verändern.');
+ if(!g.opened[id]&&JSON.stringify(groups.filter(row=>row.some(x=>old.some(t=>t.id===x))))!==JSON.stringify(g.table.map(row=>row.map(t=>t.id))))
+  throw Error('Bei der Erstauslage darfst du keine Tischsteine verändern.');
  let score=0;
  for(const row of groups){
   const value=meldValue(row.map(x=>byId.get(x)));
   if(value===null)throw Error('Ungültige Reihe oder Gruppe. Joker und Reihenfolge prüfen.');
-  score+=value;
+  if(row.some(x=>used.includes(x)))score+=value;
  }
  if(!g.opened[id]&&score<30)throw Error('Die Erstauslage muss mindestens 30 Punkte ergeben.');
  g.table=groups.map(row=>row.map(x=>byId.get(x)));
@@ -75,6 +80,6 @@ function botAction(g,id){
   const variants=[row,[row[0],row[2],row[1]],[row[1],row[0],row[2]],[row[1],row[2],row[0]],[row[2],row[0],row[1]],[row[2],row[1],row[0]]];
   for(const v of variants){const points=meldValue(v);if(points!==null&&(g.opened[id]||points>=30))return {type:'place',groups:[...g.table.map(r=>r.map(t=>t.id)),v.map(t=>t.id)]};}
  }
- return {type:'draw'};
+ return {type:g.bag.length?'draw':'pass'};
 }
 module.exports={create,act,view,botAction,meldValue};
