@@ -7,7 +7,7 @@
  const send=(action)=>emit('game:action',action);
  const tile=t=>{
   const b=node('button','rommy-tile rommy-'+t.color,t.color==='joker'?'★':String(t.value));
-  b.type='button';b.title=labels[t.color]+(t.color==='joker'?'':' '+t.value);b.setAttribute('aria-label',b.title);
+  b.type='button';b.dataset.tileId=t.id;b.title=labels[t.color]+(t.color==='joker'?'':' '+t.value);b.setAttribute('aria-label',b.title);
   return b;
  };
  const lookup=()=>new Map([...game.hand,...game.table.flat()].map(t=>[t.id,t]));
@@ -102,6 +102,19 @@
   });
  }
  function reset(){if(!game)return;splitMode.clear();rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);sortRack();active=-1;render();}
+ function tablePositions(){const positions=new Map();for(const el of $('rommy-table').querySelectorAll('[data-tile-id]'))positions.set(el.dataset.tileId,el.getBoundingClientRect());return positions;}
+ function animateTable(previous,remote){
+  if(!remote||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  let added=0;
+  for(const el of $('rommy-table').querySelectorAll('[data-tile-id]')){
+   const before=previous.get(el.dataset.tileId),after=el.getBoundingClientRect();
+   if(before){const dx=before.left-after.left,dy=before.top-after.top;
+    if(Math.abs(dx)>2||Math.abs(dy)>2)el.animate([{transform:'translate('+dx+'px,'+dy+'px)',zIndex:5},{transform:'translate(0,0)',zIndex:1}],{duration:700,easing:'cubic-bezier(.2,.8,.2,1)'});
+   }else{
+    el.animate([{opacity:0,transform:'translateY(-22px) scale(.8)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:580,delay:Math.min(added++*95,700),easing:'ease-out',fill:'backwards'});
+   }
+  }
+ }
  function render(){
   if(!game)return;
   const myTurn=game.turn===identity?.id&&!game.finished;
@@ -191,7 +204,11 @@
   if(g.game!=='rommy')return;
   game=g;
   const sig=g.revision+':'+g.turn+':'+g.finished;
-  if(sig!==signature){animatedDraw=g.latestDraw?.tileId||'';signature=sig;reset();}else render();
+  if(sig!==signature){
+   const previous=tablePositions(),remote=!!signature&&g.revision!==Number(signature.split(':')[0]);
+   animatedDraw=g.latestDraw?.tileId||'';signature=sig;reset();
+   animateTable(previous,remote);
+  }else render();
   $('rommy-play').classList.remove('hidden');
   for(const id of ['uno-play','skyjo-play','wizard-play','elfer-play'])$(id).classList.add('hidden');
  });
