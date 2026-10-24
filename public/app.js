@@ -195,7 +195,7 @@ function renderRoom(r) {
     return li;
   }));
 }
-const gameLabels={uno:'UNO',skyjo:'Skyjo',wizard:'Wizard',elfer:'11er Raus'};
+const gameLabels={uno:'UNO',skyjo:'Skyjo',wizard:'Wizard',elfer:'11er Raus',rommy:'RommyCup'};
 function renderPublicRooms(rooms){
  const list=$('public-rooms-list');list.replaceChildren();
  if(!rooms?.length){const p=document.createElement('p');p.textContent='Keine öffentlichen Räume vorhanden.';list.append(p);return;}
