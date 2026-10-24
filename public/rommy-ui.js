@@ -12,6 +12,40 @@
  };
  const lookup=()=>new Map([...game.hand,...game.table.flat()].map(t=>[t.id,t]));
  const originalTableIds=()=>new Set(game.table.flat().map(t=>t.id));
+ function meldPoints(tiles){
+  if(tiles.length<3||tiles.length>13)return null;
+  const plain=tiles.filter(t=>t.color!=='joker');
+  if(!plain.length)return null;
+  if(tiles.length<=4&&plain.every(t=>t.value===plain[0].value)&&new Set(plain.map(t=>t.color)).size===plain.length)return tiles.length*plain[0].value;
+  if(new Set(plain.map(t=>t.color)).size!==1)return null;
+  let start=null;
+  for(let i=0;i<tiles.length;i++)if(tiles[i].color!=='joker'){
+   const candidate=tiles[i].value-i;
+   if(start!==null&&start!==candidate)return null;
+   start=candidate;
+  }
+  if(start===null||start<1||start+tiles.length-1>13)return null;
+  return tiles.reduce((sum,t,i)=>sum+start+i,0);
+ }
+ function renderOpeningCounter(map){
+  const counter=$('rommy-opening-counter');
+  if(game.opened||game.finished){counter.classList.add('hidden');return;}
+  counter.classList.remove('hidden');
+  const own=new Set(game.hand.map(t=>t.id));
+  let score=0,invalid=0;
+  for(const ids of rows){
+   if(!ids.some(id=>own.has(id)))continue;
+   const points=meldPoints(ids.map(id=>map.get(id)).filter(Boolean));
+   if(points===null)invalid++;else score+=points;
+  }
+  const missing=Math.max(0,30-score);
+  $('rommy-opening-score').textContent=score+' / 30 Punkte';
+  $('rommy-opening-needed').textContent=missing?'Noch '+missing+' Punkte benötigt':invalid?'30 Punkte erreicht – Gruppen prüfen':'30 Punkte erreicht!';
+  counter.classList.toggle('complete',!missing&&!invalid);
+  counter.classList.toggle('invalid',invalid>0);
+  $('rommy-opening-progress').style.width=Math.min(100,score/30*100)+'%';
+  $('rommy-opening-warning').textContent=invalid?invalid+' unvollständige oder ungültige Gruppe(n) zählen noch nicht.':'';
+ }
  function sortGroup(ids){
   const map=lookup();
   const plain=ids.map(id=>map.get(id)).filter(t=>t&&t.color!=='joker');
@@ -50,11 +84,14 @@
   if(!game)return;
   const myTurn=game.turn===identity?.id&&!game.finished;
   const map=lookup();
+  renderOpeningCounter(map);
   $('rommy-status').textContent=game.finished?'🏆 '+(room?.players.find(p=>p.id===game.winner)?.name||'Mitspieler')+' gewinnt!':myTurn?'🎯 Du bist am Zug!':'Warte auf '+(room?.players.find(p=>p.id===game.turn)?.name||'Mitspieler')+'.';
   $('rommy-bag').textContent='Beutel: '+game.bagCount+' Steine · '+(game.opened?'Erstauslage geschafft':'Erstauslage: mindestens 30 Punkte');
   const players=$('rommy-players');players.replaceChildren();
   for(const p of game.players){const n=room?.players.find(x=>x.id===p.id)?.name||'Mitspieler';players.append(node('span','rommy-player'+(p.id===game.turn?' active':''),n+' · '+p.count));}
   const table=$('rommy-table');table.replaceChildren();
+  const recentlyPlaced=new Set(game.newTableTileIds||[]);
+  const ownHand=new Set(game.hand.map(t=>t.id));
   rows.forEach((ids,index)=>{
    const line=node('div','rommy-row'+(active===index?' selected':''));const head=node('button','rommy-row-select','Gruppe '+(index+1)+(active===index?' ✓':''));
    head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=index;render();};line.append(head);
@@ -68,7 +105,9 @@
      split.onclick=()=>splitGroup(index,pos);
      tiles.append(split);
     }
-    const t=map.get(id);if(!t)return;const b=tile(t);b.disabled=!myTurn;b.onclick=()=>{
+    const t=map.get(id);if(!t)return;const b=tile(t);
+    if(recentlyPlaced.has(id)||ownHand.has(id))b.classList.add('rommy-recently-placed');
+    b.disabled=!myTurn;b.onclick=()=>{
     rows[index].splice(pos,1);rack.push(id);sortRack();render();
    };tiles.append(b);});
    if(!ids.length)tiles.append(node('span','rommy-empty','Hier Steine ablegen'));
