@@ -6,7 +6,7 @@
  const pendingStates=[];
  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const suits={blue:'Eis',red:'Feuer',green:'Wald',yellow:'Sonne'};
- const name=id=>room?.players.find(p=>p.id===id)?.name||'Mitspieler';
+ const name=id=>{const p=room?.players.find(p=>p.id===id);return p?playerName(p):'Mitspieler';};
  const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
  const button=(text,fn,cls='secondary')=>{const b=node('button',text,cls);b.onclick=fn;return b;};
  function card(c,playable=false,click=null){
