@@ -27,10 +27,18 @@ function meldValue(m){
  if(start===null||start<1||start+m.length-1>13)return null;
  return m.reduce((sum,t,i)=>sum+start+i,0);
 }
+function beginTurn(g){
+ const id=g.players[g.turn];
+ const stone=g.bag.length?g.bag.pop():null;
+ if(stone)g.hands[id].push(stone);
+ g.latestDraw=stone?{player:id,tileId:stone.id,revision:g.revision+1}:null;
+ event(g,id,stone?'zieht zu Zugbeginn einen Stein.':'beginnt den Zug (Beutel leer).');
+}
 function create(players){
  const bag=tiles(),hands={};
  for(const id of players)hands[id]=Array.from({length:14},()=>bag.pop());
- return {players:[...players],hands,bag,table:[],opened:Object.fromEntries(players.map(id=>[id,false])),turn:0,finished:false,winner:null,events:[],revision:0};
+ const g={players:[...players],hands,bag,table:[],opened:Object.fromEntries(players.map(id=>[id,false])),turn:0,finished:false,winner:null,events:[],revision:0,latestDraw:null};
+ beginTurn(g);return g;
 }
 function event(g,id,text){g.events.push({id:g.events.length,at:Date.now(),actor:id,text});g.revision++;}
 function act(g,id,a){
@@ -39,14 +47,9 @@ function act(g,id,a){
  if(!a||typeof a!=='object')throw Error('Ungültige Aktion.');
  const hand=g.hands[id];
  if(a.type==='pass'){
-  if(g.bag.length)throw Error('Es sind noch Steine im Beutel.');
-  event(g,id,'passt.');g.turn=(g.turn+1)%g.players.length;return;
+  event(g,id,'passt.');g.turn=(g.turn+1)%g.players.length;beginTurn(g);return;
  }
- if(a.type==='draw'){
-  if(!g.bag.length)throw Error('Der Beutel ist leer. Lege Steine ab.');
-  hand.push(g.bag.pop());event(g,id,'zieht einen Stein.');
-  g.turn=(g.turn+1)%g.players.length;return;
- }
+ if(a.type==='draw')throw Error('Der Stein wird bereits zu Zugbeginn automatisch gezogen.');
  if(a.type!=='place')throw Error('Unbekannte Aktion.');
  const groups=a.groups;
  if(!Array.isArray(groups)||groups.length>40||groups.some(row=>!Array.isArray(row)||row.length<3||row.length>13))throw Error('Ungültige Steingruppen.');
@@ -69,9 +72,9 @@ function act(g,id,a){
  const selected=new Set(used);g.hands[id]=hand.filter(t=>!selected.has(t.id));g.opened[id]=true;
  event(g,id,'legt '+used.length+' Stein'+(used.length===1?'':'e')+' aus.');
  if(!g.hands[id].length){g.finished=true;g.winner=id;event(g,id,'hat alle Steine abgelegt und gewinnt!');}
- else g.turn=(g.turn+1)%g.players.length;
+ else {g.turn=(g.turn+1)%g.players.length;beginTurn(g);}
 }
-function view(g,id){return {game:'rommy',players:g.players.map(p=>({id:p,count:g.hands[p].length,opened:g.opened[p]})),hand:g.hands[id].map(t=>({...t})),table:g.table.map(row=>row.map(t=>({...t}))),turn:g.players[g.turn],bagCount:g.bag.length,opened:g.opened[id],finished:g.finished,winner:g.winner,events:g.events,revision:g.revision};}
+function view(g,id){return {game:'rommy',players:g.players.map(p=>({id:p,count:g.hands[p].length,opened:g.opened[p]})),hand:g.hands[id].map(t=>({...t})),table:g.table.map(row=>row.map(t=>({...t}))),turn:g.players[g.turn],bagCount:g.bag.length,opened:g.opened[id],finished:g.finished,winner:g.winner,events:g.events,revision:g.revision,latestDraw:g.latestDraw?.player===id?g.latestDraw:null};}
 function botAction(g,id){
  const hand=g.hands[id];
  // Basic bot: find one complete group or run in its rack.
@@ -80,6 +83,6 @@ function botAction(g,id){
   const variants=[row,[row[0],row[2],row[1]],[row[1],row[0],row[2]],[row[1],row[2],row[0]],[row[2],row[0],row[1]],[row[2],row[1],row[0]]];
   for(const v of variants){const points=meldValue(v);if(points!==null&&(g.opened[id]||points>=30))return {type:'place',groups:[...g.table.map(r=>r.map(t=>t.id)),v.map(t=>t.id)]};}
  }
- return {type:g.bag.length?'draw':'pass'};
+ return {type:'pass'};
 }
 module.exports={create,act,view,botAction,meldValue};
