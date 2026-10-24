@@ -17,6 +17,9 @@ function emit(event, payload, callback) {
     callback?.(result);
   });
 }
+const botDifficulty={easy:'🟢',normal:'🟡',hard:'🔴'};
+const botDifficultyName={easy:'Leicht',normal:'Normal',hard:'Schwer'};
+function playerName(p){return p.name+(p.bot?' '+(botDifficulty[p.bot]||'🤖'):'');}
 function renderRoom(r) {
   if (r.code !== roomCode) return;
   show('room');
@@ -25,7 +28,8 @@ function renderRoom(r) {
   $('players').replaceChildren(...r.players.map(p => {
     const li = document.createElement('li');
     const name = document.createElement('strong');
-    name.textContent = p.name + (p.id === r.host ? ' 👑' : '') + (p.id === identity.id ? ' (du)' : '');
+    name.textContent = playerName(p) + (p.id === r.host ? ' 👑' : '') + (p.id === identity.id ? ' (du)' : '');
+    if(p.bot)name.title='Bot · Schwierigkeit: '+(botDifficultyName[p.bot]||p.bot);
     const online = document.createElement('span');
     online.textContent = p.online ? '● Online' : '○ Offline';
     li.append(name, online);
