@@ -1,16 +1,24 @@
 'use strict';
 const accounts = require('./accounts');
 const readline = require('node:readline/promises');
-const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
 async function main() {
   const [command, username] = process.argv.slice(2);
   const rl = readline.createInterface({input:process.stdin,output:process.stdout});
   async function secret(question) {
-    if (!process.stdin.isTTY) throw Error('Passwort-Eingabe erfordert ein Terminal.');
-    process.stdout.write(question);
-    execFileSync('stty',['-echo']);
-    try { return await rl.question(''); }
-    finally { execFileSync('stty',['echo']); process.stdout.write('\\n'); }
+    // Use the controlling terminal rather than stdin: SSH sessions may redirect stdin.
+    let tty;
+    try { tty=fs.openSync('/dev/tty','r+'); }
+    catch { throw Error('Kein interaktives Terminal verfügbar.'); }
+    const input=fs.createReadStream(null,{fd:tty,autoClose:false});
+    const output=fs.createWriteStream(null,{fd:tty,autoClose:false});
+    const terminal=readline.createInterface({input,output,terminal:true});
+    terminal._writeToOutput=function(value) {
+      if (value.startsWith(question)) this.output.write(value);
+      else if (value.includes('\\n') || value.includes('\\r')) this.output.write('\\n');
+    };
+    try { return await terminal.question(question); }
+    finally { terminal.close();input.destroy();output.destroy();fs.closeSync(tty); }
   }
   try {
     if (command === 'create-admin' || command === 'create-user') {
