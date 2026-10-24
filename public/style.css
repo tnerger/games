@@ -402,3 +402,15 @@ button.rommy-red{color:#bf2638}button.rommy-blue{color:#205ec6}button.rommy-blac
 .rommy-sort-controls{display:flex;gap:6px}
 .rommy-sort-controls button{width:auto;min-height:36px;margin:0;padding:7px 10px;font-size:.8rem}
 .rommy-sort-controls button[aria-pressed="true"]{background:#ffc66b;color:#242039}
+
+
+/* RommyCup: neue Steine und flexibles Spielfeld */
+button.rommy-new-tile{border:3px solid #ffce56;box-shadow:0 0 0 2px #694e15,0 0 12px #ffce5670}
+button.rommy-tile-arriving{animation:rommy-arrive .65s cubic-bezier(.15,.8,.25,1) both}
+@keyframes rommy-arrive{0%{transform:translateY(-36px) scale(.72);opacity:.3}65%{transform:translateY(5px) scale(1.08);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
+@media(min-width:700px){
+ #rommy-table{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));align-items:start;gap:12px}
+ .rommy-row{width:100%;min-width:0;box-sizing:border-box}
+ .rommy-row-tiles{align-items:flex-start}
+}
+@media(prefers-reduced-motion:reduce){button.rommy-tile-arriving{animation:none}}
