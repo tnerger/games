@@ -225,12 +225,13 @@ io.use((socket,next)=>{
   const user=accounts.getSession(pair?.slice(cookieName.length+1));
   if (!user || user.must_change) return next(new Error('Anmeldung erforderlich.'));
   socket.data.accountId=user.id;
+  socket.data.sessionToken=pair?.slice(cookieName.length+1);
   next();
 });
 io.on('connection', socket => {
   socket.use((packet,next)=>{
-    const user=accounts.getUser(socket.data.accountId);
-    if (!user || user.disabled || user.must_change) return next(new Error('Konto nicht freigegeben.'));
+    const user=accounts.getSession(socket.data.sessionToken);
+    if (!user || user.id!==socket.data.accountId || user.disabled || user.must_change) return next(new Error('Konto nicht freigegeben.'));
     next();
   });
   function leave() {
