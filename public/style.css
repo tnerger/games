@@ -165,3 +165,14 @@
 @keyframes skyjo-trophy{from{transform:scale(1) rotate(-6deg)}to{transform:scale(1.16) rotate(6deg)}}
 @media(prefers-reduced-motion:reduce){.skyjo-removing{animation:skyjo-column-fade 1.8s linear both!important}.skyjo-final-victory .skyjo-result-icon{animation:none}}
 @keyframes skyjo-column-fade{0%,70%{opacity:1}100%{opacity:0}}
+
+/* Skyjo discard pile: keep previous card visible while the new card slides over it */
+.skyjo-discard-surface{position:relative;width:86px;height:112px;overflow:visible;isolation:isolate}
+#skyjo-piles .skyjo-discard-surface .skyjo-pile{position:absolute;inset:0;width:86px;height:112px;max-width:none;margin:0}
+.skyjo-discard-under{z-index:0;pointer-events:none}
+.skyjo-discard-surface>.skyjo-pile:not(.skyjo-discard-under){z-index:1}
+.skyjo-discard-slide-in{animation:skyjo-discard-in .6s cubic-bezier(.22,.8,.25,1) both}
+.skyjo-discard-slide-out{z-index:2!important;pointer-events:none;animation:skyjo-discard-out .6s ease-in both}
+@keyframes skyjo-discard-in{0%{opacity:.95;transform:translate(95px,-32px) rotate(16deg) scale(.93)}100%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}}
+@keyframes skyjo-discard-out{0%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}100%{opacity:0;transform:translate(105px,-40px) rotate(16deg) scale(.9)}}
+@media(prefers-reduced-motion:reduce){.skyjo-discard-slide-in,.skyjo-discard-slide-out{animation-duration:.01ms!important}}
