@@ -285,3 +285,8 @@
 #wizard-trick-announcement.wizard-trick-win{opacity:1;margin:0;padding:12px 18px;animation:wizard-trick-toast 2.05s ease-in-out both}
 @keyframes wizard-trick-toast{0%{opacity:0;transform:translate(-50%,-35%) scale(.92)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}25%,78%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-65%) scale(.98)}}
 @media(prefers-reduced-motion:reduce){#wizard-trick-announcement.wizard-trick-win{animation:none!important;opacity:1;transform:translate(-50%,-50%)}}
+
+/* Brief staggered fan-out when Wizard deals a new hand */
+#wizard-hand .wizard-deal-in{transform-origin:50% 110%;animation:wizard-deal-unfold .42s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(min(var(--deal-index),12)*35ms)}
+@keyframes wizard-deal-unfold{from{opacity:0;transform:translateY(24px) translateX(-18px) rotate(-12deg) scale(.88)}to{opacity:1;transform:translateY(0) translateX(0) rotate(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){#wizard-hand .wizard-deal-in{animation:none!important}}
