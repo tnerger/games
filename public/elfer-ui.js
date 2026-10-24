@@ -49,7 +49,7 @@
    $('elfer-draw-title').textContent=required?'🃏 Diese Karte musst du legen!':'🂠 Du hast eine Karte gezogen';
    $('elfer-draw-message').textContent=required?'Die gezogene Karte passt. Sie muss jetzt angelegt werden.':'Diese Karte passt noch nicht und bleibt auf deiner Hand.';
    $('elfer-draw-card').replaceChildren(card(draw,false,()=>{}));
-   $('elfer-draw-confirm').textContent=required?'Jetzt legen':'Verstanden · Weiter';
+   $('elfer-draw-confirm').textContent=required?'Karte legen & Zug beenden':'Verstanden · Weiter';
    $('elfer-draw-confirm').onclick=()=>send('game:action',required?{type:'play',color:draw.color,value:draw.value}:{type:'ack-draw'});
   }
   const actions=$('elfer-actions');actions.replaceChildren();
