@@ -42,3 +42,22 @@ test('new round increases hand size',()=>{
  const g=fixture();g.finished=true;wizard.restart(g);
  assert.equal(g.round,3);assert.equal(g.hands.a.length,3);assert.equal(g.finished,false);
 });
+
+test('Hard bot chooses a high-value trump suit',()=>{
+ const g=fixture();g.phase='choose-trump';g.turn=0;
+ g.hands.a=[c('r13','red',13),c('r12','red',12),c('b2','blue',2)];
+ assert.deepEqual(wizard.botAction(g,'a','hard'),{type:'trump',suit:'red'});
+});
+test('Hard bot preserves wizard when it cannot win because another wizard led',()=>{
+ const g=fixture();g.phase='playing';g.turn=1;g.trump='green';g.lead=null;
+ g.trick=[{id:'a',card:c('w0',null,14,'wizard')}];
+ g.bids.b=1;g.tricks.b=0;
+ g.hands.b=[c('w1',null,14,'wizard'),c('j1',null,0,'jester')];
+ assert.equal(wizard.botAction(g,'b','hard').cardId,'j1');
+});
+test('Hard bot prefers a losing card after meeting its bid',()=>{
+ const g=fixture();g.phase='playing';g.turn=1;g.lead='red';g.trump='green';
+ g.trick=[{id:'a',card:c('r9','red',9)}];g.bids.b=0;g.tricks.b=0;
+ g.hands.b=[c('r2','red',2),c('r13','red',13)];
+ assert.equal(wizard.botAction(g,'b','hard').cardId,'r2');
+});
