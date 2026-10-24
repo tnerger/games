@@ -17,7 +17,7 @@ const PORT = Number(process.env.PORT || 3000);
 const rooms = new Map();
 const dataDir = path.join(__dirname, 'data');
 const dataFile = path.join(dataDir, 'rooms.json');
-const gameLimits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6},elfer:{min:2,max:6}};
+const gameLimits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6},elfer:{min:2,max:6},rommy:{min:2,max:4}};
 const validName = name => typeof name === 'string' && name.trim().length >= 1 && name.trim().length <= 24;
 const validId = id => typeof id === 'string' && /^[a-f0-9]{32}$/.test(id);
 const code = () => crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -359,7 +359,7 @@ io.on('connection', socket => {
   });
   socket.on('bot:add',(settings,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Bots können nur vor dem Spiel vom Raumleiter hinzugefügt werden.'});const difficulty=typeof settings==='string'?settings:settings?.difficulty;const requested=typeof settings==='object'?settings?.name:null;if(!['easy','normal','hard'].includes(difficulty))return respond(ack,{error:'Unbekannte Schwierigkeit.'});if(r.players.size>=6)return respond(ack,{error:'Maximal sechs Spieler.'});const id=crypto.randomBytes(16).toString('hex');const names={easy:'Leicht',normal:'Normal',hard:'Schwer'};const n=[...r.players.values()].filter(p=>p.bot).length+1;const name=typeof requested==='string'&&requested.trim()?requested.trim():'Bot '+n;if(!validName(name))return respond(ack,{error:'Der Bot-Name muss 1 bis 24 Zeichen lang sein.'});r.players.set(id,{id,name,bot:difficulty,online:true});save();publish(r);respond(ack,{ok:true});});
   socket.on('bot:remove',(id,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game||!r.players.get(id)?.bot)return respond(ack,{error:'Bot kann nicht entfernt werden.'});r.players.delete(id);save();publish(r);respond(ack,{ok:true});});
-  socket.on('room:select-game',(type,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spielwechsel nur zwischen Runden durch den Raumleiter.'});if(!['uno','skyjo','wizard','elfer'].includes(type))return respond(ack,{error:'Unbekanntes Spiel.'});r.selectedGame=type;save();publish(r);respond(ack,{ok:true});});
+  socket.on('room:select-game',(type,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spielwechsel nur zwischen Runden durch den Raumleiter.'});if(!['uno','skyjo','wizard','elfer','rommy'].includes(type))return respond(ack,{error:'Unbekanntes Spiel.'});r.selectedGame=type;save();publish(r);respond(ack,{ok:true});});
   socket.on('game:configure', (options, ack) => {
     const r=rooms.get(socket.data.room);
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Nur der Raumleiter kann vor dem Start Regeln ändern.'});
