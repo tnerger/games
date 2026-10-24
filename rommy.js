@@ -37,7 +37,7 @@ function beginTurn(g){
 function create(players){
  const bag=tiles(),hands={};
  for(const id of players)hands[id]=Array.from({length:14},()=>bag.pop());
- const g={players:[...players],hands,bag,table:[],opened:Object.fromEntries(players.map(id=>[id,false])),turn:0,finished:false,winner:null,events:[],revision:0,latestDraw:null};
+ const g={players:[...players],hands,bag,table:[],opened:Object.fromEntries(players.map(id=>[id,false])),turn:0,finished:false,winner:null,events:[],revision:0,latestDraw:null,turnCount:0,newTableTiles:{}};
  beginTurn(g);return g;
 }
 function event(g,id,text){g.events.push({id:g.events.length,at:Date.now(),actor:id,text});g.revision++;}
@@ -47,7 +47,7 @@ function act(g,id,a){
  if(!a||typeof a!=='object')throw Error('Ungültige Aktion.');
  const hand=g.hands[id];
  if(a.type==='pass'){
-  event(g,id,'passt.');g.turn=(g.turn+1)%g.players.length;beginTurn(g);return;
+  event(g,id,'passt.');g.turn=(g.turn+1)%g.players.length;g.turnCount=(g.turnCount||0)+1;beginTurn(g);return;
  }
  if(a.type==='draw')throw Error('Der Stein wird bereits zu Zugbeginn automatisch gezogen.');
  if(a.type!=='place')throw Error('Unbekannte Aktion.');
@@ -70,11 +70,12 @@ function act(g,id,a){
  if(!g.opened[id]&&score<30)throw Error('Die Erstauslage muss mindestens 30 Punkte ergeben.');
  g.table=groups.map(row=>row.map(x=>byId.get(x)));
  const selected=new Set(used);g.hands[id]=hand.filter(t=>!selected.has(t.id));g.opened[id]=true;
+ g.newTableTiles||={};for(const tileId of used)g.newTableTiles[tileId]=g.turnCount||0;
  event(g,id,'legt '+used.length+' Stein'+(used.length===1?'':'e')+' aus.');
  if(!g.hands[id].length){g.finished=true;g.winner=id;event(g,id,'hat alle Steine abgelegt und gewinnt!');}
- else {g.turn=(g.turn+1)%g.players.length;beginTurn(g);}
+ else {g.turn=(g.turn+1)%g.players.length;g.turnCount=(g.turnCount||0)+1;beginTurn(g);}
 }
-function view(g,id){return {game:'rommy',players:g.players.map(p=>({id:p,count:g.hands[p].length,opened:g.opened[p]})),hand:g.hands[id].map(t=>({...t})),table:g.table.map(row=>row.map(t=>({...t}))),turn:g.players[g.turn],bagCount:g.bag.length,opened:g.opened[id],finished:g.finished,winner:g.winner,events:g.events,revision:g.revision,latestDraw:g.latestDraw?.player===id?g.latestDraw:null};}
+function view(g,id){return {game:'rommy',players:g.players.map(p=>({id:p,count:g.hands[p].length,opened:g.opened[p]})),hand:g.hands[id].map(t=>({...t})),table:g.table.map(row=>row.map(t=>({...t}))),turn:g.players[g.turn],bagCount:g.bag.length,opened:g.opened[id],finished:g.finished,winner:g.winner,events:g.events,revision:g.revision,latestDraw:g.latestDraw?.player===id?g.latestDraw:null,newTableTileIds:Object.entries(g.newTableTiles||{}).filter(([,turn])=>(g.turnCount||0)-turn<g.players.length).map(([tileId])=>tileId)};}
 function botAction(g,id){
  const hand=g.hands[id];
  // Basic bot: find one complete group or run in its rack.
