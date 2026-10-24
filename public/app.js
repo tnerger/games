@@ -20,7 +20,7 @@ async function initAuth() {
   if (!account) return show('auth-login');
   if (account.mustChange) return show('auth-change');
   identity={id:account.id,name:account.username};
-  socket.connect();initAuth();
+  socket.connect();enter();
   $('admin-open').classList.toggle('hidden',!account.isAdmin);
  } catch(e){status(e.message);show('auth-login');}
 }
@@ -132,4 +132,4 @@ socket.on('connect', () => {
 });
 socket.on('disconnect', () => status('Verbindung unterbrochen – wir verbinden erneut …'));
 fetch('/api/version').then(r => r.json()).then(r => $('version').textContent = 'v' + r.version).catch(()=>{});
-enter();
+initAuth();
