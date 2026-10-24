@@ -4,7 +4,17 @@ const socket = io({ reconnection: true, autoConnect:false });
 let roomCode = sessionStorage.getItem('gamesRoom') || '';
 let identity = null;
 let account = null;
-function show(page) { for (const id of ['auth-login','auth-change','profile','admin-users','login','lobby','room']) $(id).classList.toggle('hidden', id !== page); }
+function closeAccountMenu(){
+ $('account-menu').classList.add('hidden');
+ $('account-menu-toggle').setAttribute('aria-expanded','false');
+}
+function show(page) {
+ for (const id of ['auth-login','auth-change','profile','admin-users','login','lobby','room']) $(id).classList.toggle('hidden', id !== page);
+ const signedIn=!!account&&!account.mustChange;
+ $('account-menu-wrap').classList.toggle('hidden',!signedIn);
+ $('auth-logout').classList.toggle('hidden',!signedIn);
+ closeAccountMenu();
+}
 function status(message) { $('status').textContent = message || ''; }
 function enter() { if (identity) { $('greeting').textContent = identity.name; show('lobby'); } else show('auth-login'); }
 async function request(url, method='GET', body) {
@@ -44,10 +54,19 @@ $('change-submit').onclick=async()=>{
   account=null;identity=null;status('Passwort geändert. Bitte erneut anmelden.');show('auth-login');
  }catch(e){status(e.message);}
 };
-$('auth-logout').onclick=async()=>{
+$('auth-logout').onclick=async(e)=>{
+ e.preventDefault();
  await request('/api/auth/logout','POST');
  socket.disconnect();account=null;identity=null;roomCode='';sessionStorage.removeItem('gamesRoom');show('auth-login');
 };
+$('account-menu-toggle').onclick=()=>{
+ const open=$('account-menu').classList.toggle('hidden')===false;
+ $('account-menu-toggle').setAttribute('aria-expanded',String(open));
+};
+document.addEventListener('click',e=>{
+ if(!$('account-menu-wrap').contains(e.target))closeAccountMenu();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccountMenu();});
 $('profile-open').onclick=()=>{
  $('profile-current-name').textContent=account.username;
  closeProfileDialogs();
