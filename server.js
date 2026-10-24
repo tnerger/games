@@ -212,4 +212,5 @@ io.on('connection', socket => {
   socket.on('leave', (_, ack) => { leave(); respond(ack, { ok: true }); });
   socket.on('disconnect', leave);
 });
-server.listen(PORT, '0.0.0.0', () => console.log('Games läuft auf Port ' + PORT));
+const HOST = process.env.HOST || '127.0.0.1';
+server.listen(PORT, HOST, () => console.log('Games läuft auf ' + HOST + ':' + PORT));
