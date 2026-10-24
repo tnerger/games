@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
- let room=null,game=null,rows=[],rack=[],active=0,signature='',sortMode='color',animatedDraw='',splitMode=new Set();
+ let room=null,game=null,rows=[],rack=[],active=-1,signature='',sortMode='color',animatedDraw='',splitMode=new Set();
  const colorOrder={red:0,blue:1,black:2,orange:3,joker:4};
  const labels={red:'Rot',blue:'Blau',black:'Schwarz',orange:'Orange',joker:'Joker'};
  const send=(action)=>emit('game:action',action);
@@ -47,21 +47,43 @@
   $('rommy-opening-warning').textContent=invalid?invalid+' unvollständige oder ungültige Gruppe(n) zählen noch nicht.':'';
  }
  function sortGroup(ids){
-  const map=lookup();
-  const plain=ids.map(id=>map.get(id)).filter(t=>t&&t.color!=='joker');
+  const map=lookup(),tiles=ids.map(id=>map.get(id));
+  if(tiles.some(t=>!t))return;
+  const plain=tiles.filter(t=>t.color!=='joker');
+  const jokers=tiles.filter(t=>t.color==='joker');
   if(!plain.length)return;
-  const isSet=new Set(plain.map(t=>t.value)).size===1;
-  const colors=new Set(plain.map(t=>t.color));
-  if(isSet){
-   ids.sort((a,b)=>{
-    const x=map.get(a),y=map.get(b);
-    return (colorOrder[x.color]-colorOrder[y.color])||x.id.localeCompare(y.id);
-   });
-  }else if(colors.size===1){
-   // Joker keep their relative positions to preserve their represented values.
-   const sorted=plain.slice().sort((a,b)=>a.value-b.value||a.id.localeCompare(b.id));
-   let next=0;
-   for(let i=0;i<ids.length;i++)if(map.get(ids[i]).color!=='joker')ids[i]=sorted[next++].id;
+  if(plain.every(t=>t.value===plain[0].value)){
+   ids.splice(0,ids.length,...plain.sort((a,b)=>colorOrder[a.color]-colorOrder[b.color]||a.id.localeCompare(b.id)).map(t=>t.id),...jokers.map(t=>t.id));
+   return;
+  }
+  if(new Set(plain.map(t=>t.color)).size!==1)return;
+  const sorted=plain.slice().sort((a,b)=>a.value-b.value||a.id.localeCompare(b.id));
+  // Try each possible start, filling number gaps with jokers and preserving
+  // the joker positions where possible. Never reorder an already valid run.
+  if(meldPoints(tiles)!==null)return;
+  const n=ids.length;
+  let best=null;
+  for(let start=1;start<=14-n;start++){
+   const slots=Array(n).fill(null),remaining=[];
+   let valid=true;
+   for(const t of sorted){
+    const pos=t.value-start;
+    if(pos<0||pos>=n||slots[pos]){valid=false;break;}
+    slots[pos]=t;
+   }
+   if(!valid)continue;
+   for(let i=0;i<n;i++)if(!slots[i])remaining.push(i);
+   if(remaining.length!==jokers.length)continue;
+   const candidate=slots.slice();
+   remaining.forEach((pos,i)=>candidate[pos]=jokers[i]);
+   const score=candidate.reduce((sum,t,i)=>sum+Math.abs(ids.indexOf(t.id)-i),0);
+   if(!best||score<best.score)best={candidate,score};
+  }
+  if(best)ids.splice(0,ids.length,...best.candidate.map(t=>t.id));
+  else {
+   // Partial/incomplete row: keep jokers available rather than placing them
+   // permanently in a wrong numeric slot.
+   ids.splice(0,ids.length,...sorted.map(t=>t.id),...jokers.map(t=>t.id));
   }
  }
  function splitGroup(index,at){
@@ -79,7 +101,7 @@
    return (x.color==='joker'?14:x.value)-(y.color==='joker'?14:y.value)||colorOrder[x.color]-colorOrder[y.color]||x.id.localeCompare(y.id);
   });
  }
- function reset(){if(!game)return;splitMode.clear();rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);sortRack();active=rows.length;render();}
+ function reset(){if(!game)return;splitMode.clear();rows=game.table.map(r=>r.map(t=>t.id));rack=game.hand.map(t=>t.id);sortRack();active=-1;render();}
  function render(){
   if(!game)return;
   const myTurn=game.turn===identity?.id&&!game.finished;
@@ -93,18 +115,19 @@
   const recentlyPlaced=new Set(game.newTableTileIds||[]);
   const ownHand=new Set(game.hand.map(t=>t.id));
   rows.forEach((ids,index)=>{
-   const line=node('div','rommy-row'+(active===index?' selected':''));const head=node('button','rommy-row-select','Gruppe '+(index+1)+(active===index?' ✓':''));
-   head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=index;render();};line.append(head);
+   const line=node('div','rommy-row'+(active===index?' selected':''));
+   line.setAttribute('role','group');line.setAttribute('aria-label','Gruppe '+(index+1));const head=node('button','rommy-row-select','Gruppe '+(index+1)+(active===index?' ✓':''));
+   head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=active===index?-1:index;splitMode.clear();render();};line.append(head);
    const toggle=node('button','rommy-split-toggle'+(splitMode.has(index)?' active':''),'✂');
    toggle.type='button';toggle.title=splitMode.has(index)?'Teilungspunkte ausblenden':'Teilungspunkte anzeigen';
    toggle.setAttribute('aria-label',toggle.title);
    toggle.setAttribute('aria-pressed',String(splitMode.has(index)));
    toggle.disabled=!myTurn||ids.length<2;
    toggle.onclick=()=>{if(splitMode.has(index))splitMode.delete(index);else splitMode.add(index);render();};
-   line.append(toggle);
+   if(active===index)line.append(toggle);
    const tiles=node('div','rommy-row-tiles');
    ids.forEach((id,pos)=>{
-    if(pos>0&&splitMode.has(index)){
+    if(pos>0&&active===index&&splitMode.has(index)){
      const split=node('button','rommy-split','✂');
      split.type='button';split.title='Gruppe nach Stein '+pos+' teilen';
      split.setAttribute('aria-label','Gruppe '+(index+1)+' nach '+pos+' Steinen teilen');
@@ -115,19 +138,21 @@
     const t=map.get(id);if(!t)return;const b=tile(t);
     if(recentlyPlaced.has(id)||ownHand.has(id))b.classList.add('rommy-recently-placed');
     b.disabled=!myTurn;b.onclick=()=>{
+    if(active!==index){active=index;splitMode.clear();render();return;}
     rows[index].splice(pos,1);rack.push(id);sortRack();render();
    };tiles.append(b);});
    if(!ids.length)tiles.append(node('span','rommy-empty','Hier Steine ablegen'));
    line.append(tiles);table.append(line);
   });
-  const add=$('rommy-add-row');add.disabled=!myTurn;add.onclick=()=>{rows.push([]);active=rows.length-1;render();};
+  const add=$('rommy-add-row');add.disabled=!myTurn;add.onclick=()=>{rows.push([]);active=rows.length-1;splitMode.clear();render();};
+  $('rommy-hand-hint').classList.toggle('hidden',!myTurn||active>=0);
   $('rommy-sort-color').setAttribute('aria-pressed',String(sortMode==='color'));
   $('rommy-sort-value').setAttribute('aria-pressed',String(sortMode==='value'));
   const hand=$('rommy-hand');hand.replaceChildren();
   const fromTable=originalTableIds();
   for(const id of rack){const t=map.get(id);if(!t)continue;const b=tile(t);
    if(fromTable.has(id)){b.classList.add('rommy-table-tile-in-rack');b.title+=' · vom Spieltisch (muss zurück auf den Tisch)';}if(game.latestDraw?.tileId===id){b.classList.add('rommy-new-tile');if(animatedDraw===id)b.classList.add('rommy-tile-arriving');}b.disabled=!myTurn;b.onclick=()=>{
-   if(active>=rows.length){rows.push([]);active=rows.length-1;}
+   if(active<0||active>=rows.length){return;}
    rows[active].push(id);sortGroup(rows[active]);rack=rack.filter(x=>x!==id);render();
   };hand.append(b);}
   animatedDraw='';
