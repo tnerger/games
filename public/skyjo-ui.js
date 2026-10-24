@@ -54,11 +54,12 @@ socket.on('game:state',g=>{
  discardSurface.append(discardButton);
  discard.append(discardSurface,el('span','Ablagestapel','skyjo-pile-label'));
  piles.append(deck,discard);
- const lastMove=g.events.at(-1)?.text||'';
+ const newMoves=g.events.filter(e=>e.id>(previous?.events?.at(-1)?.id??-1));
+ const hasMove=word=>newMoves.some(e=>e.text.includes(word));
  const sameRound=previous?.game==='skyjo'&&previous.events?.[0]?.at===g.events?.[0]?.at;
- const discardChanged=sameRound&&previous.revision!==g.revision&&previous.discard!==g.discard;
- const tookDiscard=discardChanged&&lastMove.includes('vom Ablagestapel genommen');
- const placedDiscard=discardChanged&&(lastMove.includes('getauscht')||lastMove.includes('abgeworfen')||lastMove.includes('Spalte mit'));
+ const discardChanged=sameRound&&previous.revision!==g.revision;
+ const tookDiscard=discardChanged&&hasMove('vom Ablagestapel genommen');
+ const placedDiscard=discardChanged&&(hasMove('getauscht')||hasMove('abgeworfen')||hasMove('Spalte mit'));
  if(tookDiscard||placedDiscard){
   if(discardAnimationTimer)clearTimeout(discardAnimationTimer);
   const oldTop=previous.discard;
