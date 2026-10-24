@@ -116,8 +116,10 @@
   const ownHand=new Set(game.hand.map(t=>t.id));
   rows.forEach((ids,index)=>{
    const line=node('div','rommy-row'+(active===index?' selected':''));
-   line.setAttribute('role','group');line.setAttribute('aria-label','Gruppe '+(index+1));const head=node('button','rommy-row-select','Gruppe '+(index+1)+(active===index?' ✓':''));
-   head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=active===index?-1:index;splitMode.clear();render();};line.append(head);
+   line.setAttribute('role','group');line.setAttribute('aria-label','Gruppe '+(index+1));
+   line.style.gridColumn='span '+Math.min(Math.max(ids.length,3),8);
+   line.onclick=e=>{if(e.target===line){active=index;splitMode.clear();render();}};const head=node('button','rommy-row-select','Gruppe '+(index+1)+(active===index?' ✓':''));
+   head.type='button';head.disabled=!myTurn;head.onclick=()=>{active=active===index?-1:index;splitMode.clear();render();};if(active===index)line.append(head);
    const toggle=node('button','rommy-split-toggle'+(splitMode.has(index)?' active':''),'✂');
    toggle.type='button';toggle.title=splitMode.has(index)?'Teilungspunkte ausblenden':'Teilungspunkte anzeigen';
    toggle.setAttribute('aria-label',toggle.title);
@@ -141,7 +143,7 @@
     if(active!==index){active=index;splitMode.clear();render();return;}
     rows[index].splice(pos,1);rack.push(id);sortRack();render();
    };tiles.append(b);});
-   if(!ids.length)tiles.append(node('span','rommy-empty','Hier Steine ablegen'));
+   if(!ids.length){const empty=node('button','rommy-empty','+ Gruppe auswählen');empty.type='button';empty.disabled=!myTurn;empty.onclick=()=>{active=index;render();};tiles.append(empty);}
    line.append(tiles);table.append(line);
   });
   const add=$('rommy-add-row');add.disabled=!myTurn;add.onclick=()=>{rows.push([]);active=rows.length-1;splitMode.clear();render();};
