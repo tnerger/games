@@ -442,3 +442,21 @@ button.rommy-recently-placed{border:3px solid #161616;box-shadow:0 0 0 2px #f4d4
 button.rommy-split-toggle{display:inline-flex;align-items:center;justify-content:center;width:35px;min-height:30px;height:30px;margin:0 0 8px 7px;padding:0;border:1px solid #6577a3;border-radius:8px;background:#354364;color:#fff;font-size:1rem;vertical-align:middle}
 button.rommy-split-toggle.active{background:#f3c567;color:#22253b;border-color:#f3c567}
 button.rommy-split-toggle:disabled{opacity:.35}
+
+
+/* RommyCup v0.15: kompakte Backstein-Anordnung */
+#rommy-table{display:grid;grid-template-columns:repeat(auto-fill,minmax(39px,1fr));grid-auto-flow:row dense;gap:10px 7px;align-items:start}
+#rommy-table .rommy-row{background:transparent;border:2px solid transparent;border-radius:8px;box-shadow:none;padding:2px;margin:0;width:100%;min-width:0;box-sizing:border-box;cursor:pointer}
+#rommy-table .rommy-row.selected{background:#1c2543;border-color:#ffcc75;padding:7px;z-index:1}
+#rommy-table .rommy-row-tiles{display:flex;flex-wrap:wrap;gap:4px;min-height:0;align-items:center}
+#rommy-table .rommy-row:not(.selected) .rommy-row-tiles{flex-wrap:nowrap}
+#rommy-table .rommy-row:not(.selected) .rommy-tile{width:100%;min-width:0;max-width:46px}
+#rommy-table .rommy-row:not(.selected) .rommy-row-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
+#rommy-table .rommy-row.selected .rommy-tile{width:39px}
+#rommy-table .rommy-row .rommy-row-select{margin:0 4px 7px 0}
+#rommy-table .rommy-row .rommy-split-toggle{margin-bottom:7px}
+.rommy-hand-hint{padding:8px 10px;border:1px dashed #8698c0;border-radius:8px;font-size:.86rem}
+@media(min-width:700px){
+ #rommy-table{grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:12px 8px}
+ #rommy-table .rommy-row.selected .rommy-tile{width:46px}
+}
