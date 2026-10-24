@@ -4,7 +4,7 @@ const socket = io({ reconnection: true, autoConnect:false });
 let roomCode = sessionStorage.getItem('gamesRoom') || '';
 let identity = null;
 let account = null;
-function show(page) { for (const id of ['auth-login','auth-change','admin-users','login','lobby','room']) $(id).classList.toggle('hidden', id !== page); }
+function show(page) { for (const id of ['auth-login','auth-change','profile','admin-users','login','lobby','room']) $(id).classList.toggle('hidden', id !== page); }
 function status(message) { $('status').textContent = message || ''; }
 function enter() { if (identity) { $('greeting').textContent = identity.name; show('lobby'); } else show('auth-login'); }
 async function request(url, method='GET', body) {
@@ -47,6 +47,45 @@ $('change-submit').onclick=async()=>{
 $('auth-logout').onclick=async()=>{
  await request('/api/auth/logout','POST');
  socket.disconnect();account=null;identity=null;roomCode='';sessionStorage.removeItem('gamesRoom');show('auth-login');
+};
+$('profile-open').onclick=()=>{
+ $('profile-name').value=account.username;
+ $('profile-name-password').value='';
+ $('profile-old-password').value='';
+ $('profile-new-password').value='';
+ $('profile-confirm-password').value='';
+ status('');
+ show('profile');
+};
+$('profile-back').onclick=()=>{status('');enter();};
+$('profile-name-submit').onclick=async()=>{
+ const username=$('profile-name').value.trim();
+ const currentPassword=$('profile-name-password').value;
+ if(!/^[a-zA-Z0-9_.-]{3,24}$/.test(username))return status('Benutzername: 3–24 Zeichen (Buchstaben, Ziffern, _, ., -).');
+ try{
+  const data=await request('/api/profile/username','POST',{username,currentPassword});
+  account=data.user;
+  identity={id:account.id,name:account.username};
+  $('greeting').textContent=account.username;
+  $('profile-name-password').value='';
+  status('Benutzername gespeichert. Bei bestehenden Räumen erscheint der neue Name nach erneutem Beitritt.');
+ }catch(e){status(e.message);}
+};
+$('profile-password-submit').onclick=async()=>{
+ const currentPassword=$('profile-old-password').value;
+ const newPassword=$('profile-new-password').value;
+ if(newPassword!==$('profile-confirm-password').value)return status('Passwörter stimmen nicht überein.');
+ if(newPassword.length<12||newPassword.length>256)return status('Passwort muss 12–256 Zeichen lang sein.');
+ try{
+  await request('/api/profile/password','POST',{currentPassword,newPassword});
+  $('profile-old-password').value='';
+  $('profile-new-password').value='';
+  $('profile-confirm-password').value='';
+  socket.disconnect();account=null;identity=null;roomCode='';sessionStorage.removeItem('gamesRoom');
+  $('auth-password').value='';
+  status('Passwort geändert. Bitte erneut anmelden.');
+  show('auth-login');
+ }catch(e){status(e.message);}
 };
 $('admin-open').onclick=async()=>{show('admin-users');await loadUsers();};
 $('admin-back').onclick=()=>enter();

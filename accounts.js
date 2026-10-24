@@ -76,6 +76,27 @@ function changePassword(id, password, mustChange = false) {
   db.prepare('UPDATE users SET password_hash=?,must_change=? WHERE id=?').run(hashPassword(password), mustChange ? 1 : 0, id);
   db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
 }
+function changeUsername(id, username) {
+  if (typeof username !== 'string' || !USERNAME.test(username)) throw Error('Benutzername: 3–24 Zeichen (Buchstaben, Ziffern, _, ., -).');
+  const current = getUser(id);
+  if (!current) throw Error('Benutzer nicht gefunden.');
+  if (current.username.toLowerCase() === username.toLowerCase() && current.username === username) throw Error('Das ist bereits dein Benutzername.');
+  try {
+    db.prepare('UPDATE users SET username=? WHERE id=?').run(username, id);
+  } catch (e) {
+    if (e.code === 'SQLITE_CONSTRAINT_UNIQUE' || e.message.includes('UNIQUE')) throw Error('Benutzername bereits vergeben.');
+    throw e;
+  }
+  return safeUser(getUser(id));
+}
+function validateNewPassword(password, username, oldHash) {
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD || password.length > 256) throw Error('Passwort muss 12–256 Zeichen lang sein.');
+  if (password.trim() !== password) throw Error('Passwort darf nicht mit Leerzeichen beginnen oder enden.');
+  if (username && password.toLowerCase().includes(username.toLowerCase())) throw Error('Passwort darf den Benutzernamen nicht enthalten.');
+  if (oldHash && verifyPassword(password, oldHash)) throw Error('Das neue Passwort muss sich vom bisherigen unterscheiden.');
+  const common = ['password123456', 'passwort123456', '123456789012', 'qwertz123456', 'qwerty123456'];
+  if (common.includes(password.toLowerCase())) throw Error('Bitte ein weniger häufiges Passwort wählen.');
+}
 function setDisabled(id, disabled) {
   db.prepare('UPDATE users SET disabled=? WHERE id=?').run(disabled ? 1 : 0, id);
   if (disabled) db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
@@ -83,4 +104,4 @@ function setDisabled(id, disabled) {
 function listUsers() { return db.prepare('SELECT id,username,is_admin,must_change,disabled,created_at FROM users ORDER BY username').all().map(safeUser); }
 function getUser(id) { return db.prepare('SELECT * FROM users WHERE id=?').get(id); }
 function adminCount() { return db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin=1').get().n; }
-module.exports = { createUser, authenticate, createSession, getSession, destroySession, changePassword, setDisabled, listUsers, getUser, safeUser, adminCount, verifyPassword };
+module.exports = { createUser, authenticate, createSession, getSession, destroySession, changePassword, changeUsername, validateNewPassword, setDisabled, listUsers, getUser, safeUser, adminCount, verifyPassword };
