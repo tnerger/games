@@ -24,7 +24,10 @@ function act(g,id,a){
  if(g.players[g.turn]!==id)throw Error('Du bist nicht am Zug.');
  if(!a||typeof a!=='object')throw Error('Ungültige Aktion.');
  const hand=g.hands[id];
- if(g.pendingDraw&&(a.type!=='play'||a.color!==g.pendingDraw.color||a.value!==g.pendingDraw.value))throw Error('Du musst zuerst die gezogene Karte legen.');
+ if(g.pendingDraw){
+  if(a.type==='ack-draw'&&!legal(g,g.pendingDraw)){g.pendingDraw=null;event(g,id,'hat die gezogene Karte angesehen.');if(g.drawn===3||!g.deck.length)next(g);return;}
+  if(a.type!=='play'||a.color!==g.pendingDraw.color||a.value!==g.pendingDraw.value||!legal(g,g.pendingDraw))throw Error('Bitte bestätige zuerst die gezogene Karte.');
+ }
  if(a.type==='play'){
   const i=hand.findIndex(c=>c.color===a.color&&c.value===a.value);
   if(i<0||!legal(g,hand[i]))throw Error('Diese Karte kann nicht angelegt werden.');
@@ -40,9 +43,9 @@ function act(g,id,a){
   if(g.played||hand.some(c=>legal(g,c)))throw Error('Du kannst eine Karte legen.');
   if(g.drawn>=3||!g.deck.length)throw Error('Du kannst nicht weiter ziehen.');
   const c=g.deck.pop();hand.push(c);g.drawn++;event(g,id,'zieht eine Karte.');
-  if(legal(g,c)){
-   g.pendingDraw={...c};event(g,id,'muss die gezogene '+c.value+' ('+c.color+') legen.');
-  }else if(g.drawn===3||!g.deck.length)next(g);
+  g.pendingDraw={...c};
+  if(legal(g,c))event(g,id,'muss die gezogene '+c.value+' ('+c.color+') legen.');
+  else event(g,id,'hat eine nicht passende Karte gezogen.');
   return;
  }
  if(a.type==='pass'){
@@ -53,7 +56,7 @@ function act(g,id,a){
 }
 function view(g,id){return {game:'elfer',players:g.players.map(p=>({id:p,count:g.hands[p].length,score:g.scores[p]||0})),hand:(g.hands[id]||[]).map(c=>({...c})),rows:g.rows,turn:g.players[g.turn],deckCount:g.deck.length,drawn:g.drawn,played:g.played,pendingDraw:g.players[g.turn]===id?g.pendingDraw:null,legal:(g.hands[id]||[]).filter(c=>legal(g,c)),finished:g.finished,winner:g.winner,roundScores:g.roundScores,scores:g.scores,events:g.events,revision:g.revision};}
 function botAction(g,id,level){
- if(g.pendingDraw)return {type:'play',...g.pendingDraw};
+ if(g.pendingDraw)return legal(g,g.pendingDraw)?{type:'play',...g.pendingDraw}:{type:'ack-draw'};
  const hand=g.hands[id],options=hand.filter(c=>legal(g,c));
  if(options.length){
   const ranked=options.map(c=>({c,follow:hand.filter(x=>x.color===c.color&&(x.value===c.value-1||x.value===c.value+1)).length,edge:Math.abs(c.value-11)}));
