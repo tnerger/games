@@ -23,12 +23,16 @@ function updateRoom(r){
  $('uno-play').classList.toggle('hidden',active!=='uno');
  $('uno-setup').classList.toggle('hidden',r.gameStarted||selected!=='uno');
  $('game-switch').classList.toggle('hidden',!r.gameStarted||r.host!==identity?.id);
- $('game-switch').disabled=!!r.gameStarted&&!lastState?.finished;
+ $('game-switch').disabled=false;
 }
 $('game-choice').onchange=()=>send('room:select-game',$('game-choice').value);
 $('start-skyjo').onclick=()=>send('game:start',{});
 $('skyjo-restart').onclick=()=>send('game:restart',{});
-$('game-switch').onclick=()=>send('room:finish-game',{});
+$('game-switch').onclick=()=>{if(room?.gameStarted&&lastState&&!lastState.finished)$('game-cancel-dialog').classList.remove('hidden');else send('room:finish-game',{});};
+$('game-cancel-back').onclick=()=>$('game-cancel-dialog').classList.add('hidden');
+$('game-cancel-confirm').onclick=()=>emit('room:finish-game',{},r=>{if(r?.ok)$('game-cancel-dialog').classList.add('hidden');});
+$('game-cancel-notice-close').onclick=()=>$('game-cancel-notice').classList.add('hidden');
+socket.on('game:cancelled',data=>{if(data.hostId===identity?.id)return;$('game-cancel-message').textContent=data.by+' hat die laufende Partie abgebrochen und wird gleich ein neues Spiel starten.';$('game-cancel-notice').classList.remove('hidden');});
 $('skyjo-result-close').onclick=()=>{$('skyjo-result-overlay').classList.add('hidden');$('skyjo-result-reopen').focus();};
 $('skyjo-result-reopen').onclick=()=>{$('skyjo-result-overlay').classList.remove('hidden');$('skyjo-result-close').focus();};
 $('skyjo-log-toggle').onclick=()=>{const x=$('skyjo-log');x.classList.toggle('hidden');$('skyjo-log-toggle').textContent=x.classList.contains('hidden')?'Spielverlauf anzeigen':'Spielverlauf ausblenden';};
@@ -36,7 +40,7 @@ socket.on('room',updateRoom);
 socket.on('game:state',g=>{
  const previous=lastState;
  lastState=g;
- $('game-switch').disabled=!g.finished;
+ $('game-switch').disabled=false;
  if(g.game!=='skyjo')return;
  const mine=g.turn===identity?.id;
  const phase=g.phase;
@@ -77,6 +81,7 @@ socket.on('game:state',g=>{
   if(g.source==='deck'){const drop=btn('↘',()=>send('game:action',{type:'discard'}),'skyjo-discard-icon');drop.title='Gezogene Karte abwerfen';drop.setAttribute('aria-label','Gezogene Karte abwerfen und eine verdeckte Karte aufdecken');taken.append(drop);}
   piles.append(taken);
  }
+ $('skyjo-center').classList.toggle('skyjo-active-player',!g.finished&&g.phase!=='reveal'&&mine);
  const hand=$('skyjo-hand');hand.replaceChildren();
  g.hand.forEach((c,i)=>{if(!c){hand.append(el('div','—','skyjo-empty'));return;}
   const available=phase==='reveal'&&!c.open&&g.revealed<2||mine&&(phase==='replace'||phase==='flip'&&!c.open);
@@ -93,6 +98,7 @@ socket.on('game:state',g=>{
   const details=el('details',undefined,'skyjo-opponent');details.open=expandedOpponents.has(p.id)||window.matchMedia('(min-width: 900px)').matches;const summary=el('summary',who(p.id)+' · '+p.open+' offen · '+p.cards+' Karten');summary.addEventListener('click',()=>{if(details.open)expandedOpponents.delete(p.id);else expandedOpponents.add(p.id);});
   const grid=el('div',undefined,'skyjo-opponent-grid');
   for(const c of p.layout||[])grid.append(c?card(c.open?c.value:null,()=>{},true):el('div','—','skyjo-empty'));
+  details.classList.toggle('skyjo-active-player',!g.finished&&g.phase!=='reveal'&&g.turn===p.id);
   details.append(summary,grid);(opponentIndex%2===0?left:right).append(details);
  }
  const scores=$('skyjo-scores');scores.replaceChildren(el('h3','Punktetafel'));
@@ -114,7 +120,7 @@ socket.on('game:state',g=>{
  $('skyjo-restart').classList.toggle('hidden',!g.finished||room?.host!==identity?.id);
  $('skyjo-restart').textContent=g.matchFinished?'🎲 Neue Skyjo-Partie starten':'Nächste Skyjo-Runde';
  if(g.matchFinished)$('skyjo-turn').textContent='🏆 Spiel beendet! '+who(g.players.reduce((a,b)=>g.scores[a]<=g.scores[b]?a:b))+' gewinnt mit den wenigsten Punkten.';
- $('game-switch').disabled=!g.finished;
+ $('game-switch').disabled=false;
  if(g.lastRemoval){
   const key=(room?.code||'')+':'+g.events[0]?.at+':'+g.lastRemoval.revision;
   if(shownRemovalKey!==key){
