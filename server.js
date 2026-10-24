@@ -95,9 +95,24 @@ function publishGame(r) { if(!r.game)return;const engine=gameRegistry.get(r.game
 const botTimers=new Map();
 function scheduleBot(r){
  if(!r.game||r.game.finished)return;
- const id=r.gameType==='skyjo'&&r.game.phase==='reveal'?r.game.players.find(pid=>r.players.get(pid)?.bot&&(r.game.revealed[pid]||0)<2):r.game.players[r.game.turn];const player=r.players.get(id);
+ const revealing=r.gameType==='skyjo'&&r.game.phase==='reveal';
+ const id=revealing?r.game.players.find(pid=>r.players.get(pid)?.bot&&(r.game.revealed[pid]||0)<2):r.game.players[r.game.turn];
+ const player=r.players.get(id);
  if(!player?.bot||botTimers.has(r.code))return;
- const timer=setTimeout(()=>{botTimers.delete(r.code);if(!r.game||r.game.finished||(r.gameType==='skyjo'&&r.game.phase==='reveal'?(r.game.revealed[id]||0)>=2:r.game.players[r.game.turn]!==id))return;try{const action=gameRegistry.get(r.gameType).bot(r.game,id,player.bot);performAction(r,id,action);}catch(err){console.error('Bot-Fehler:',err.message);}},r.gameType==='wizard'?850:r.gameType==='skyjo'&&['replace','flip'].includes(r.game.phase)?650:2400);
+ const delay=revealing?450:r.gameType==='wizard'?850:r.gameType==='skyjo'&&['replace','flip'].includes(r.game.phase)?650:2400;
+ const game=r.game;
+ const timer=setTimeout(()=>{
+  botTimers.delete(r.code);
+  if(r.game!==game||game.finished)return;
+  if(revealing?(game.phase!=='reveal'||(game.revealed[id]||0)>=2):game.players[game.turn]!==id)return scheduleBot(r);
+  try{
+   const action=gameRegistry.get(r.gameType).bot(game,id,player.bot);
+   performAction(r,id,action);
+  }catch(err){
+   console.error('Bot-Fehler:',err.message);
+   scheduleBot(r);
+  }
+ },delay);
  botTimers.set(r.code,timer);
 }
 function performAction(r,id,action){
