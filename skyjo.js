@@ -6,13 +6,13 @@ function create(players,scores={}){
  const pile=deck(),hands={};
  for(const id of players)hands[id]=Array.from({length:12},()=>({card:pile.pop(),open:false}));
  const discard=[pile.pop()];
- return {players:[...players],hands,deck:pile,discard,turn:0,phase:'reveal',revealed:{},held:null,source:null,finisher:null,remaining:null,finished:false,matchFinished:false,roundScores:null,rawRoundScores:null,penalty:null,roundWinners:null,matchWinners:null,scores:{...scores},events:[{id:0,at:Date.now(),actor:null,text:'Skyjo-Runde gestartet. Jeder deckt zwei Karten auf.'}],revision:0};
+ return {players:[...players],hands,deck:pile,discard,turn:0,phase:'reveal',revealed:{},held:null,source:null,finisher:null,remaining:null,finished:false,matchFinished:false,roundScores:null,rawRoundScores:null,penalty:null,roundWinners:null,matchWinners:null,scores:{...scores},lastRemoval:null,events:[{id:0,at:Date.now(),actor:null,text:'Skyjo-Runde gestartet. Jeder deckt zwei Karten auf.'}],revision:0};
 }
 function event(g,id,text){g.events.push({id:g.events.length,at:Date.now(),actor:id,text});g.revision++;}
 function next(g){g.turn=(g.turn+1)%g.players.length;}
 function refill(g){if(g.deck.length)return;const top=g.discard.pop();g.deck=shuffle(g.discard);g.discard=[top];}
 function take(g){refill(g);if(!g.deck.length)throw Error('Keine Karten mehr verfügbar.');return g.deck.pop();}
-function removeColumns(g,id){const h=g.hands[id];for(let col=0;col<4;col++){const indices=[col,col+4,col+8];const cards=indices.map(i=>h[i]);if(cards.every(x=>x&&x.open&&x.card.value===cards[0].card.value)){for(const i of indices){g.discard.push(h[i].card);h[i]=null;}event(g,id,'hat eine vollständige Spalte mit '+cards[0].card.value+' entfernt.');}}}
+function removeColumns(g,id){const h=g.hands[id];for(let col=0;col<4;col++){const indices=[col,col+4,col+8];const cards=indices.map(i=>h[i]);if(cards.every(x=>x&&x.open&&x.card.value===cards[0].card.value)){g.lastRemoval={player:id,column:col,value:cards[0].card.value,cards:indices.map(i=>({index:i,value:h[i].card.value})),revision:g.revision+1};for(const i of indices){g.discard.push(h[i].card);h[i]=null;}event(g,id,'hat eine vollständige Spalte mit '+cards[0].card.value+' entfernt.');}}}
 function score(g){const points={};for(const id of g.players)points[id]=g.hands[id].reduce((n,x)=>n+(x?.card.value||0),0);
  g.rawRoundScores={...points};
  const fin=g.finisher;
@@ -56,7 +56,7 @@ function act(g,id,a){
  }
  throw Error('Ungültiger Spielzustand.');
 }
-function view(g,id){return {game:'skyjo',players:g.players.map(pid=>({id:pid,open:g.hands[pid].filter(x=>x?.open).length,cards:g.hands[pid].filter(Boolean).length,layout:g.hands[pid].map(x=>x?{open:g.finished||x.open,value:g.finished||x.open?x.card.value:null}:null)})),hand:g.hands[id]?.map(x=>x?{open:x.open,value:x.open?x.card.value:null}:null)||[],turn:g.players[g.turn],phase:g.phase,revealed:g.revealed[id]||0,discard:g.discard.at(-1)?.value,held:g.held&&(g.players[g.turn]===id?g.held.value:null),source:g.source,finisher:g.finisher,remaining:g.remaining,finished:g.finished,matchFinished:g.matchFinished,roundScores:g.roundScores,rawRoundScores:g.rawRoundScores,penalty:g.penalty,roundWinners:g.roundWinners,matchWinners:g.matchWinners,scores:g.scores,events:g.events,revision:g.revision};}
+function view(g,id){return {game:'skyjo',players:g.players.map(pid=>({id:pid,open:g.hands[pid].filter(x=>x?.open).length,cards:g.hands[pid].filter(Boolean).length,layout:g.hands[pid].map(x=>x?{open:g.finished||x.open,value:g.finished||x.open?x.card.value:null}:null)})),hand:g.hands[id]?.map(x=>x?{open:x.open,value:x.open?x.card.value:null}:null)||[],turn:g.players[g.turn],phase:g.phase,revealed:g.revealed[id]||0,discard:g.discard.at(-1)?.value,held:g.held&&(g.players[g.turn]===id?g.held.value:null),source:g.source,finisher:g.finisher,remaining:g.remaining,finished:g.finished,matchFinished:g.matchFinished,roundScores:g.roundScores,rawRoundScores:g.rawRoundScores,penalty:g.penalty,roundWinners:g.roundWinners,matchWinners:g.matchWinners,lastRemoval:g.lastRemoval,scores:g.scores,events:g.events,revision:g.revision};}
 function botAction(g,id,level){const h=g.hands[id];const hidden=h.map((x,i)=>x&&!x.open?i:null).filter(x=>x!==null);const open=h.map((x,i)=>x&&x.open?i:null).filter(x=>x!==null);
  const pick=a=>a[crypto.randomInt(a.length)];
  if(g.phase==='reveal')return {type:'reveal',index:pick(hidden)};
