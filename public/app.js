@@ -119,7 +119,7 @@ $('join').onclick = () => {
     roomCode = result.room.code; sessionStorage.setItem('gamesRoom', roomCode); renderRoom(result.room);
   });
 };
-$('rename').onclick = () => status('Der Spielername entspricht deinem Benutzerkonto.');
+if ($('rename')) $('rename').onclick = () => status('Der Spielername entspricht deinem Benutzerkonto.');
 $('leave').onclick = () => emit('leave', {}, () => { roomCode = ''; sessionStorage.removeItem('gamesRoom'); enter(); });
 $('copy').onclick = async () => {
   try { await navigator.clipboard.writeText(roomCode); status('Raumcode kopiert.'); }
