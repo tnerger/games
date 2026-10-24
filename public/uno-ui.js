@@ -18,6 +18,14 @@ let lastRevision=-1;
 let previousCounts={};
 let lastEventId=-1;
 let roomDetailsExpanded=false;
+const limits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6}};
+const modal=(id,open)=>{$(id).classList.toggle('hidden',!open);};
+$('bot-open').onclick=()=>{modal('bot-dialog',true);$('bot-name').focus();};
+$('bot-cancel').onclick=()=>modal('bot-dialog',false);
+$('uno-rules-open').onclick=()=>modal('uno-rules-dialog',true);
+$('uno-rules-close').onclick=()=>modal('uno-rules-dialog',false);
+for(const id of ['bot-dialog','uno-rules-dialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))modal(id,false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){modal('bot-dialog',false);modal('uno-rules-dialog',false);}});
 function send(type,payload){emit(type,payload,r=>{if(r?.ok)status('');});}
 function make(tag,txt,cls){const e=document.createElement(tag);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e;}
 function button(txt,fn,cls){const b=make('button',txt,cls||'secondary');b.onclick=fn;return b;}
@@ -28,9 +36,14 @@ function ruleOptions(room){
  $('room-details').classList.toggle('hidden',room.gameStarted&&!roomDetailsExpanded);
  const isHost=room.host===identity?.id;
  $('bot-setup').classList.toggle('hidden',!isHost||room.gameStarted);
+ const limit=limits[room.selectedGame]||limits.uno;
+ const missing=Math.max(0,limit.min-room.players.length);
+ $('bot-count').textContent='('+room.players.filter(p=>p.bot).length+')';
+ $('player-limit-info').textContent='Für '+(room.selectedGame==='wizard'?'Wizard':room.selectedGame==='skyjo'?'Skyjo':'UNO')+': '+limit.min+'–'+limit.max+' Spieler · aktuell '+room.players.length+(missing?' · noch '+missing+' benötigt':' · startbereit');
+ $('bot-open').disabled=room.players.length>=limit.max;
  const bots=$('bot-list');bots.replaceChildren();
  for(const p of room.players.filter(p=>p.bot)){const line=make('div',undefined,'bot-entry');line.append(make('span',playerName(p)));if(isHost)line.append(button('Entfernen',()=>send('bot:remove',p.id),'secondary'));bots.append(line);}
- $('bot-add').disabled=room.players.length>=6;
+ $('bot-add').disabled=room.players.length>=limit.max;
  const el=$('uno-options');el.replaceChildren();
  const rules=room.gameRules||{};
  for(const [key,title] of Object.entries(labels)){
@@ -42,6 +55,8 @@ function ruleOptions(room){
   el.append(wrap);
  }
  $('save-rules').classList.toggle('hidden',room.host!==identity?.id);
+ $('uno-rules-open').classList.toggle('hidden',room.host!==identity?.id);
+ for(const id of ['start-uno','start-skyjo','start-wizard'])if($(id))$(id).disabled=missing>0;
  $('start-uno').classList.toggle('hidden',room.host!==identity?.id);
  const unoSelected=room.selectedGame==='uno';
  $('uno-setup').classList.toggle('hidden',room.gameStarted||!unoSelected);
@@ -49,10 +64,10 @@ function ruleOptions(room){
 }
 $('save-rules').onclick=()=>{
  const opts={};document.querySelectorAll('#uno-options input').forEach(x=>opts[x.dataset.rule]=x.checked);
- send('game:configure',opts);
+ emit('game:configure',opts,r=>{if(r?.ok)modal('uno-rules-dialog',false);});
 };
 $('start-uno').onclick=()=>send('game:start',{});
-$('bot-add').onclick=()=>send('bot:add',{difficulty:$('bot-level').value,name:$('bot-name').value.trim()});
+$('bot-add').onclick=()=>emit('bot:add',{difficulty:$('bot-level').value,name:$('bot-name').value.trim()},r=>{if(r?.ok){modal('bot-dialog',false);$('bot-name').value='';}});
 $('room-details-toggle').onclick=()=>{roomDetailsExpanded=!roomDetailsExpanded;$('room-details').classList.toggle('hidden',!roomDetailsExpanded);$('room-details-toggle').textContent=roomDetailsExpanded?'▾ Raum & Mitspieler ausblenden':'▸ Raum & Mitspieler anzeigen';};
 function wildArt(value){
  const ns='http://www.w3.org/2000/svg';
