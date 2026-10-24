@@ -16,7 +16,7 @@ const PORT = Number(process.env.PORT || 3000);
 const rooms = new Map();
 const dataDir = path.join(__dirname, 'data');
 const dataFile = path.join(dataDir, 'rooms.json');
-const gameLimits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6}};
+const gameLimits={uno:{min:2,max:6},skyjo:{min:2,max:6},wizard:{min:3,max:6},elfer:{min:2,max:6}};
 const validName = name => typeof name === 'string' && name.trim().length >= 1 && name.trim().length <= 24;
 const validId = id => typeof id === 'string' && /^[a-f0-9]{32}$/.test(id);
 const code = () => crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -24,14 +24,14 @@ function save() {
   fs.mkdirSync(dataDir, { recursive: true });
   const tmp = dataFile + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify([...rooms.values()].map(r => ({
-    code: r.code, host: r.host, scores:r.scores||{}, skyjoScores:r.skyjoScores||{}, wizardScores:r.wizardScores||{}, selectedGame:r.selectedGame||'uno', options:r.options||uno.defaults, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
+    code: r.code, host: r.host, scores:r.scores||{}, skyjoScores:r.skyjoScores||{}, wizardScores:r.wizardScores||{}, elferScores:r.elferScores||{}, selectedGame:r.selectedGame||'uno', options:r.options||uno.defaults, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, bot:p.bot||null }))
   }))));
   fs.renameSync(tmp, dataFile);
 }
 try {
   for (const r of JSON.parse(fs.readFileSync(dataFile, 'utf8'))) {
     if (!/^[A-F0-9]{6}$/.test(r.code) || !Array.isArray(r.players)) continue;
-    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},selectedGame:r.selectedGame||'uno', options:{...uno.defaults,...(r.options||{})}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
+    rooms.set(r.code, { code: r.code, host: r.host, scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno', options:{...uno.defaults,...(r.options||{})}, players: new Map(r.players.filter(p => validId(p.id) && validName(p.name)).map(p => [p.id, { ...p, online: !!p.bot }])) });
   }
 } catch (err) { if (err.code !== 'ENOENT') console.error('Spielstände konnten nicht geladen werden:', err.message); }
 app.use(express.static(path.join(__dirname, 'public')));
@@ -90,7 +90,7 @@ app.post('/api/admin/update', adminAuth, express.json({ limit: '1kb' }), async (
   } catch (err) { updating = false; res.status(500).json({ error: 'Update fehlgeschlagen: ' + err.message }); }
 });
 
-const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online, bot:p.bot||null })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},selectedGame:r.selectedGame||'uno',activeGame:r.gameType||null });
+const publicRoom = r => ({ code: r.code, host: r.host, players: [...r.players.values()].map(p => ({ id: p.id, name: p.name, online: p.online, bot:p.bot||null })), gameStarted:!!r.game, gameRules:r.options||uno.defaults,scores:r.scores||{},skyjoScores:r.skyjoScores||{},wizardScores:r.wizardScores||{},elferScores:r.elferScores||{},selectedGame:r.selectedGame||'uno',activeGame:r.gameType||null });
 function publishGame(r) { if(!r.game)return;const engine=gameRegistry.get(r.gameType||'uno');for(const p of r.players.values())io.to(r.code).emit('game:notice',{code:r.code});for(const socket of io.sockets.sockets.values()){if(socket.data.room===r.code)socket.emit('game:state',engine.view(r.game,socket.data.player));} }
 
 const botTimers=new Map();
@@ -130,6 +130,7 @@ function performAction(r,id,action){
  if(!r.game.events)r.game.events=[{id:0,at:Date.now(),actor:null,text:'Die Runde wurde gestartet.'}];
  for(const entry of entries){r.game.events.push({id:r.game.events.length,at:Date.now(),actor:id,text:entry});}
  if(!wasFinished&&r.game.finished&&r.gameType==='wizard'){r.wizardScores=r.game.scores;save();publish(r);}
+ if(!wasFinished&&r.game.finished&&r.gameType==='elfer'){r.elferScores=r.game.scores;save();publish(r);}
  if(!wasFinished&&r.game.finished&&r.gameType==='skyjo'){r.skyjoScores=r.game.scores;save();publish(r);}
  if(!wasFinished&&r.game.finished&&r.gameType==='uno'){const winner=r.game.winner;const points=Object.entries(r.game.hands).filter(([pid])=>pid!==winner).flatMap(([,hand])=>hand).reduce((sum,c)=>sum+(c.value==='wild'||c.value==='wild4'?50:['skip','reverse','draw2'].includes(c.value)?20:Number(c.value)||0),0);const score=r.scores[winner]||{wins:0,points:0};r.scores[winner]={wins:score.wins+1,points:score.points+points};save();publish(r);}
  publishGame(r);scheduleBot(r);
@@ -172,7 +173,7 @@ io.on('connection', socket => {
     if (!validId(identity?.id) || !validName(identity?.name)) return respond(ack, { error: 'Bitte einen Namen eingeben.' });
     let c;
     do { c = code(); } while (rooms.has(c));
-    const r = { code: c, host: identity.id, scores:{},skyjoScores:{},wizardScores:{},selectedGame:'uno',options:{...uno.defaults}, players: new Map() };
+    const r = { code: c, host: identity.id, scores:{},skyjoScores:{},wizardScores:{},elferScores:{},selectedGame:'uno',options:{...uno.defaults}, players: new Map() };
     rooms.set(c, r);
     joinRoom(r, identity, ack);
   });
@@ -183,7 +184,7 @@ io.on('connection', socket => {
   });
   socket.on('bot:add',(settings,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Bots können nur vor dem Spiel vom Raumleiter hinzugefügt werden.'});const difficulty=typeof settings==='string'?settings:settings?.difficulty;const requested=typeof settings==='object'?settings?.name:null;if(!['easy','normal','hard'].includes(difficulty))return respond(ack,{error:'Unbekannte Schwierigkeit.'});if(r.players.size>=6)return respond(ack,{error:'Maximal sechs Spieler.'});const id=crypto.randomBytes(16).toString('hex');const names={easy:'Leicht',normal:'Normal',hard:'Schwer'};const n=[...r.players.values()].filter(p=>p.bot).length+1;const name=typeof requested==='string'&&requested.trim()?requested.trim():'Bot '+n;if(!validName(name))return respond(ack,{error:'Der Bot-Name muss 1 bis 24 Zeichen lang sein.'});r.players.set(id,{id,name,bot:difficulty,online:true});save();publish(r);respond(ack,{ok:true});});
   socket.on('bot:remove',(id,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game||!r.players.get(id)?.bot)return respond(ack,{error:'Bot kann nicht entfernt werden.'});r.players.delete(id);save();publish(r);respond(ack,{ok:true});});
-  socket.on('room:select-game',(type,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spielwechsel nur zwischen Runden durch den Raumleiter.'});if(!['uno','skyjo','wizard'].includes(type))return respond(ack,{error:'Unbekanntes Spiel.'});r.selectedGame=type;save();publish(r);respond(ack,{ok:true});});
+  socket.on('room:select-game',(type,ack)=>{const r=rooms.get(socket.data.room);if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spielwechsel nur zwischen Runden durch den Raumleiter.'});if(!['uno','skyjo','wizard','elfer'].includes(type))return respond(ack,{error:'Unbekanntes Spiel.'});r.selectedGame=type;save();publish(r);respond(ack,{ok:true});});
   socket.on('game:configure', (options, ack) => {
     const r=rooms.get(socket.data.room);
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Nur der Raumleiter kann vor dem Start Regeln ändern.'});
@@ -196,7 +197,7 @@ io.on('connection', socket => {
     if(!r||r.host!==socket.data.player||r.game)return respond(ack,{error:'Spiel kann nicht gestartet werden.'});
     const limit=gameLimits[r.selectedGame||'uno'];if(r.players.size<limit.min||r.players.size>limit.max)return respond(ack,{error:'Dieses Spiel benötigt '+limit.min+' bis '+limit.max+' Spieler.'});
     if([...r.players.values()].some(p=>!p.online))return respond(ack,{error:'Alle Spieler müssen online sein.'});
-    r.gameType=r.selectedGame||'uno';if(r.gameType==='skyjo')r.skyjoScores={};if(r.gameType==='wizard')r.wizardScores={};r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);save();
+    r.gameType=r.selectedGame||'uno';if(r.gameType==='skyjo')r.skyjoScores={};if(r.gameType==='wizard')r.wizardScores={};if(r.gameType==='elfer')r.elferScores={};r.game=gameRegistry.get(r.gameType).create([...r.players.keys()],r);save();
     publish(r);publishGame(r);scheduleBot(r);respond(ack,{ok:true});
   });
   socket.on('game:action',(action,ack)=>{
