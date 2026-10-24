@@ -1,33 +1,29 @@
 # Games 🎲
 
-Lokale, barrierearme Multiplayer-Spieleplattform. Version 0.1.0: gemeinsame Lobby mit Räumen für bis zu 6 Personen. Kartenspiele folgen.
+Multiplayer-Spieleplattform mit UNO, Skyjo, Wizard und Elfer Raus. Private Benutzerkonten werden durch Administratoren erstellt; es gibt keine öffentliche Registrierung.
 
-## Pixel 7 / Termux
+## VPS (Produktion)
+
+Die Anwendung läuft unter Node.js mit systemd und einem Nginx-HTTPS-Reverse-Proxy. Anleitung, Update- und Status-Skripte: [VPS-Betrieb und Updates](docs/vps-deployment.md).
+
+Nach der Installation der Skripte auf dem Server:
 
 ```bash
-pkg install nodejs-lts git
-git clone https://github.com/tnerger/games.git ~/games
-cd ~/games
+games-status
+games-update
+```
+
+## Entwicklung
+
+```bash
+git clone https://github.com/tnerger/games.git
+cd games
 npm install
-bash start.sh
+node server.js
 ```
 
-Pixel: http://127.0.0.1:3000 — andere Geräte: http://PIXEL-WLAN-IP:3000
+Für lokale Tests getrennte Datenverzeichnisse und Konten verwenden. Nicht dieselbe Datenbank wie auf dem Produktivserver nutzen.
 
-Beenden: Strg+C. Kein Autostart.
+## Sicherheit
 
-## Update
-
-Server beenden, dann:
-
-```bash
-cd ~/games
-bash update.sh
-bash start.sh
-```
-
-Daten liegen unter `data/` und werden nicht eingecheckt. Der Updater bricht bei lokalen Git-Änderungen ab.
-
-## Hinweise
-
-Nur in einem vertrauenswürdigen WLAN verwenden. Es gibt noch keine Anmeldung oder Admin-Rechte. Raumcodes sind keine Sicherheitsgrenze. Beim Browser-Neustart muss der Raumcode eventuell erneut eingegeben werden. Die Lobby speichert Räume, noch keine Kartenspiele.
+`data/`, `.env`, Tokens, Datenbanken, SSH-Schlüssel und Backups niemals committen. Benutzerkonten sind privat; keine Selbstregistrierung. Der Node.js-Port sollte im Produktivbetrieb nur auf `127.0.0.1` lauschen.
