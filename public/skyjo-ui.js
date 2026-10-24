@@ -2,7 +2,7 @@
 (()=>{
 const $=id=>document.getElementById(id);
 const send=(name,data)=>emit(name,data);
-let room=null,lastState=null,shownResultKey=null,shownRemovalKey=null,discardAnimationTimer=null;
+let room=null,lastState=null,shownResultKey=null,shownRemovalKey=null,shownFinisherKey=null,discardAnimationTimer=null;
 const expandedOpponents=new Set();
 let expandedRoomCode=null;
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
@@ -14,7 +14,7 @@ function card(v,onclick,disabled=false){
  x.disabled=disabled;x.setAttribute('aria-label',v===null?'Verdeckte Karte':'Karte '+v);return x;
 }
 function updateRoom(r){
- room=r;if(expandedRoomCode!==r.code){expandedOpponents.clear();expandedRoomCode=r.code;}if(!r.gameStarted){lastState=null;shownResultKey=null;shownRemovalKey=null;$('skyjo-result-overlay').classList.add('hidden');}const selected=r.selectedGame||'uno',active=r.activeGame;
+ room=r;if(expandedRoomCode!==r.code){expandedOpponents.clear();expandedRoomCode=r.code;}if(!r.gameStarted){lastState=null;shownResultKey=null;shownRemovalKey=null;shownFinisherKey=null;$('skyjo-finisher-overlay').classList.add('hidden');$('skyjo-result-overlay').classList.add('hidden');}const selected=r.selectedGame||'uno',active=r.activeGame;
  $('game-picker').classList.toggle('hidden',r.gameStarted);
  $('game-choice').value=selected;$('game-choice').disabled=r.host!==identity?.id;
  $('skyjo-setup').classList.toggle('hidden',r.gameStarted||selected!=='skyjo');
@@ -33,6 +33,7 @@ $('game-cancel-back').onclick=()=>$('game-cancel-dialog').classList.add('hidden'
 $('game-cancel-confirm').onclick=()=>emit('room:finish-game',{},r=>{if(r?.ok)$('game-cancel-dialog').classList.add('hidden');});
 $('game-cancel-notice-close').onclick=()=>$('game-cancel-notice').classList.add('hidden');
 socket.on('game:cancelled',data=>{if(data.hostId===identity?.id)return;$('game-cancel-message').textContent=data.by+' hat die laufende Partie abgebrochen und wird gleich ein neues Spiel starten.';$('game-cancel-notice').classList.remove('hidden');});
+$('skyjo-finisher-close').onclick=()=>{$('skyjo-finisher-overlay').classList.add('hidden');};
 $('skyjo-result-close').onclick=()=>{$('skyjo-result-overlay').classList.add('hidden');$('skyjo-result-reopen').focus();};
 $('skyjo-result-reopen').onclick=()=>{$('skyjo-result-overlay').classList.remove('hidden');$('skyjo-result-close').focus();};
 $('skyjo-log-toggle').onclick=()=>{const x=$('skyjo-log');x.classList.toggle('hidden');$('skyjo-log-toggle').textContent=x.classList.contains('hidden')?'Spielverlauf anzeigen':'Spielverlauf ausblenden';};
@@ -43,6 +44,17 @@ socket.on('game:state',g=>{
  $('game-switch').disabled=false;
  if(g.game!=='skyjo')return;
  const mine=g.turn===identity?.id;
+ const sameFinisherRound=previous?.game==='skyjo'&&previous.events?.[0]?.at===g.events?.[0]?.at;
+ if(g.finisher!==null&&!g.finished&&g.finisher!==identity?.id&&sameFinisherRound&&previous.finisher===null){
+  const key=(room?.code||'')+':'+g.events[0]?.at+':'+g.finisher;
+  if(shownFinisherKey!==key){
+   shownFinisherKey=key;
+   $('skyjo-finisher-message').textContent=who(g.finisher)+' hat alle Karten aufgedeckt! Du hast noch einen letzten Zug, bevor die Runde gewertet wird.';
+   $('skyjo-finisher-overlay').classList.remove('hidden');
+   $('skyjo-finisher-close').focus();
+  }
+ }
+ if(g.finished)$('skyjo-finisher-overlay').classList.add('hidden');
  const phase=g.phase;
  $('skyjo-turn').textContent=g.finished?'🏁 Runde beendet':phase==='reveal'?'Decke zwei Karten auf ('+g.revealed+'/2)':mine?'🎯 Du bist am Zug!':'Am Zug: '+who(g.turn);
  $('skyjo-last').textContent=(g.events.at(-1)?.actor?who(g.events.at(-1).actor)+': ':'')+(g.events.at(-1)?.text||'');
