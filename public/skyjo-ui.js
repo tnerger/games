@@ -98,7 +98,7 @@ socket.on('game:state',g=>{
  g.hand.forEach((c,i)=>{if(!c){hand.append(el('div','—','skyjo-empty'));return;}
   const available=phase==='reveal'&&!c.open&&g.revealed<2||mine&&(phase==='replace'||phase==='flip'&&!c.open);
   const action=phase==='reveal'?'reveal':phase==='flip'?'flip':'replace';
-  hand.append(card(c.open?c.value:null,()=>send('game:action',{type:action,index:i}),!available));
+  hand.append(card(g.finished||c.open?c.value:null,()=>send('game:action',{type:action,index:i}),g.finished||!available));
  });
  const actions=$('skyjo-actions');actions.replaceChildren();
  if(mine&&phase==='replace')actions.append(el('p','Tippe auf eine deiner Karten, um sie gegen die gezogene Karte auszutauschen.'));
