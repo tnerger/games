@@ -301,3 +301,35 @@
 #wizard-bid-options{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-height:200px;overflow-y:auto}
 #wizard-bid-options button{width:48px;min-width:48px;min-height:44px;margin:0;padding:6px;border-radius:10px}
 @media(prefers-reduced-motion:reduce){#wizard-table.wizard-table-blurred{transition:none}}
+
+/* 11er Raus */
+#elfer-players{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.elfer-player{padding:9px 12px;border-radius:12px;background:#333e65;font-weight:650}
+.elfer-player.active{outline:2px solid #ffce73;background:#47557e}
+#elfer-board{display:grid;gap:12px;margin:18px 0}
+.elfer-row{min-width:0;padding:12px 10px;border-radius:14px;background:#18243c}
+.elfer-row-name{display:block;margin-bottom:8px}
+.elfer-row-numbers{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:3px}
+.elfer-slot{display:flex;justify-content:center;align-items:center;min-width:0;min-height:34px;border-radius:5px;background:#29324b;border:1px dashed #576078;font-size:clamp(.48rem,1.5vw,.85rem);font-weight:800}
+.elfer-slot.elfer-eleven{outline:2px solid #f7c76a;outline-offset:1px}
+.elfer-slot.elfer-red,.elfer-card.elfer-red{background:#b93b50;color:white}
+.elfer-slot.elfer-yellow,.elfer-card.elfer-yellow{background:#dfb32d;color:#1f1b16}
+.elfer-slot.elfer-green,.elfer-card.elfer-green{background:#23875d;color:white}
+.elfer-slot.elfer-blue,.elfer-card.elfer-blue{background:#326cbb;color:white}
+#elfer-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:16px 0 24px}
+.elfer-card{width:56px;min-height:78px;margin:0;border:3px solid #f3f1e7;border-radius:10px;font-size:1.4rem;box-shadow:0 4px 9px #0005;transition:transform .14s,box-shadow .14s}
+.elfer-card:disabled{opacity:.75;cursor:default}
+.elfer-card.elfer-playable{box-shadow:0 0 0 3px #ffce77,0 5px 14px #0006}
+.elfer-card.elfer-playable:hover{transform:translateY(-5px)}
+#elfer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+#elfer-actions button{width:auto;min-width:170px;margin:0}
+.elfer-deck-count{color:#c6cce2}
+.elfer-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.elfer-toolbar button{flex:1 1 150px;width:auto;margin:0}
+#elfer-scores{margin:18px 0}
+#elfer-log{max-height:220px;overflow:auto;padding:12px;background:#141b34;border-radius:12px}
+#elfer-log p{font-size:.85rem;border-bottom:1px solid #46506a}
+#elfer-result-content table{width:100%;border-collapse:collapse}
+#elfer-result-content td,#elfer-result-content th{padding:8px 5px;border-bottom:1px solid #56607d;text-align:left}
+@media(min-width:800px){#elfer-play{width:min(1100px,calc(100vw - 64px));position:relative;left:50%;transform:translateX(-50%)}}
+@media(max-width:520px){.elfer-row{padding:9px 4px}.elfer-row-numbers{gap:1px}.elfer-slot{min-height:27px;font-size:.51rem}.elfer-card{width:48px;min-height:68px;font-size:1.2rem}}
